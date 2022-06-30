@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+mkdir -p build-release
+(
+    cd build-release
+    conan install --build=missing ../ > /dev/null
+    export CXX=${COMPILER:-'clang++'}
+    cmake -DCMAKE_BUILD_TYPE=Release ../ -G"Unix Makefiles" > /dev/null
+    make > /dev/null
+)
+
+ln -sf build-release/compile_commands.json compile_commands.json
