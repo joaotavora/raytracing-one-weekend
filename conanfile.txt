@@ -1,5 +1,6 @@
 [requires]
-nlohmann_json/3.10.5
+glm/cci.20220420
+stb/cci.20210910
 
 [generators]
 cmake
