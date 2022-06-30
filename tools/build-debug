@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+mkdir -p build-debug
+(
+    cd build-debug
+    conan install --build=missing ../
+    export CXX=${COMPILER:-'clang++'}
+    cmake -DCMAKE_BUILD_TYPE=Debug ../ -G"Unix Makefiles"
+    make
+)
+
+ln -sf build-debug/compile_commands.json compile_commands.json
