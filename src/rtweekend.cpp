@@ -4,6 +4,7 @@
 #include <functional>
 #include <limits>
 #include <optional>
+#include <memory>
 
 namespace rtweekend {
   using vec3 = glm::dvec3;
@@ -35,6 +36,13 @@ namespace rtweekend {
     };
     [[nodiscard]] virtual std::optional<hit_record>
     hit(const ray& r, double tmin, double tmax) const = 0;
+
+    hittable() = default;
+    hittable(const hittable&) = default;
+    hittable(hittable&&) = default;
+    hittable& operator=(const hittable&) = default;
+    hittable& operator=(hittable&&) = default;
+    virtual ~hittable() = default;
   };
 
   struct sphere : public hittable {
@@ -78,15 +86,23 @@ namespace rtweekend {
     return 0.5*(ycomp + slant);
   }
 
+  using world_t = std::vector<std::unique_ptr<hittable>>;
+
   /** Say color of ray R */
-  color ray_color(const ray& r) {
-    sphere s{point{0,0,-1}, 0.5};
-
-    auto probe = s.hit(r, 0, std::numeric_limits<double>::infinity());
-    if (probe) {
-      return 0.5 * (probe->normal + vec3{1, 1, 1});
+  color ray_color(const ray& r, const world_t& world) {
+    std::optional<hittable::hit_record> closest{};
+    double tmax = std::numeric_limits<double>::infinity();
+    for (const auto& h : world) {
+      auto probe = h->hit(r, 0, tmax);
+      if (probe) {
+        closest = probe;
+        tmax = probe->t;
+      }
     }
-
+    if (closest) {
+      return 0.5 * (closest->normal + vec3{1, 1, 1});
+    }
+    
     auto t = hit_background(+1.0, r);
     return
       // lower t, whiter image, higher t, bluer image centered
@@ -115,6 +131,12 @@ int main() {
   auto lower_left_corner =
     origin - horizontal/2.0 - vertical/2.0 - rt::vec3{0, 0, focal_length};
 
+  // world of spheres
+  rt::world_t world{};
+  world.reserve(10);
+  world.push_back(std::make_unique<rt::sphere>(rt::point{0,0,-1}, 0.5));
+  world.push_back(std::make_unique<rt::sphere>(rt::point{0,-100.5,-1}, 100));
+
   // Render
 
   std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
@@ -128,7 +150,7 @@ int main() {
         .origin   = origin,
         .direction= (lower_left_corner + u*horizontal + v*vertical) - origin
       };
-      rt::color pixel_color = rt::ray_color(r);
+      rt::color pixel_color = rt::ray_color(r, world);
 
       rt::write_color(std::cout, pixel_color);
     }
