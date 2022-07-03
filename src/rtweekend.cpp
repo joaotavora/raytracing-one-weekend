@@ -2,35 +2,39 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <functional>
+#include <limits>
 #include <optional>
 
 namespace rtweekend {
-  // could be "color.h"
   using vec3 = glm::dvec3;
   using color = vec3;
-  using point = vec3;
+  using point = glm::dvec3;
 
   void write_color(std::ostream &out, color pixel_color) {
-
-
     // Write the translated [0,255] value of each color component.
     out << static_cast<int>(255.999 * pixel_color.x) << ' '
         << static_cast<int>(255.999 * pixel_color.y) << ' '
         << static_cast<int>(255.999 * pixel_color.z) << '\n';
   }
 
-  // could be "ray.h"
+  std::ostream& operator<<(std::ostream& o, const vec3& x) {
+    return o << "{" << x.x << "," << x.y << "," << x.z << "}";
+  }
+
   struct ray {
     vec3 origin{};
     vec3 direction{};
     vec3 at(double t) const {return origin + direction * t;}
   };
 
-
   struct hittable {
-    struct hit_record {point p; vec3 normal; double t;};
+    struct hit_record {
+      point p;
+      vec3 normal;
+      double t;
+    };
     [[nodiscard]] virtual std::optional<hit_record>
-    hit(double tmin, double tmax, const ray& r) const = 0;
+    hit(const ray& r, double tmin, double tmax) const = 0;
   };
 
   struct sphere : public hittable {
@@ -39,22 +43,29 @@ namespace rtweekend {
     sphere(point c, double r) : center{c}, radius{r} {};
 
     [[nodiscard]] std::optional<hit_record>
-    hit(double tmin, double tmax, const ray& r) const override {
+    hit(const ray& r, double tmin, double tmax) const override {
       vec3 oc = r.origin - center;                      // (A-C)
-      auto a = glm::dot(r.direction, r.direction);      // (b.b)
-      auto half_b = glm::dot(oc, r.direction);
+      double a = glm::dot(r.direction, r.direction);    // (b.b)
+      auto h = glm::dot(oc, r.direction);               // (A-C).b
       auto c = glm::dot(oc, oc) - radius*radius;        // (A-C)(A-C) - r^2
-      auto discriminant = half_b*half_b - a*c;
-      if (discriminant < 0) return {};
+      auto discriminant = h*h - a*c;
+      if (discriminant < 0.0) return {};
 
-      auto root = (-half_b - std::sqrt(discriminant));
+      auto root = (-h - std::sqrt(discriminant))/a;
       if (root < tmin || root > tmax) {
-        root = (-half_b + std::sqrt(discriminant));
+        
+        root = (-h + std::sqrt(discriminant))/a;
         if (root < tmin || root > tmax) return {};
       }
 
       auto hitpoint = r.at(root);
-      return hit_record{hitpoint, glm::normalize(hitpoint - center), root};
+      auto normal = glm::normalize(hitpoint - center);
+
+      // normal = glm::faceforward(normal, r.direction, normal);
+      normal = glm::dot(r.direction, normal) < 0?normal:-normal;
+      return hit_record{hitpoint,
+                        normal,
+                        root};
 
     }
   };
@@ -71,7 +82,7 @@ namespace rtweekend {
   color ray_color(const ray& r) {
     sphere s{point{0,0,-1}, 0.5};
 
-    auto probe = s.hit(0, 100, r);
+    auto probe = s.hit(r, 0, std::numeric_limits<double>::infinity());
     if (probe) {
       return 0.5 * (probe->normal + vec3{1, 1, 1});
     }
@@ -90,7 +101,7 @@ int main() {
   // Image
 
   constexpr auto aspect_ratio = 16.0/9.0;
-  constexpr int image_width = 600;
+  constexpr int image_width = 800;
   constexpr int image_height = static_cast<int>(image_width/aspect_ratio);
 
 
