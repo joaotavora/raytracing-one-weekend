@@ -4,6 +4,7 @@ Checks: >
   -google-readability-braces-around-statements,
   cppcoreguidelines-*,
   -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-type-union-access,
   readability-*,
   -readability-magic-numbers,
   -readability-named-parameter,
