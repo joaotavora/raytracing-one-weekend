@@ -2,8 +2,7 @@
 #include <iostream>
 #include <glm/glm.hpp>
 #include <functional>
-
-
+#include <optional>
 
 namespace rtweekend {
   // could be "color.h"
@@ -27,17 +26,38 @@ namespace rtweekend {
     vec3 at(double t) const {return origin + direction * t;}
   };
 
-  /** Compute T of A+BT where ray R hits sphere at CENTER of radius RADIUS */
-  double hit_sphere(const point& center, double radius, const ray& r) {
-    //  x = -b +- sqrt(b^2 - 4ac)/2a
-    vec3 oc = r.origin - center;                      // (A-C)
-    auto a = glm::dot(r.direction, r.direction);      // (b.b)
-    auto half_b = glm::dot(oc, r.direction);
-    auto c = glm::dot(oc, oc) - radius*radius;        // (A-C)(A-C) - r^2
-    auto discriminant = half_b*half_b - a*c;
-    if (discriminant > 0) return (-half_b - std::sqrt(discriminant))/a;
-    return -1;
-  }
+
+  struct hittable {
+    struct hit_record {point p; vec3 normal; double t;};
+    [[nodiscard]] virtual std::optional<hit_record>
+    hit(double tmin, double tmax, const ray& r) const = 0;
+  };
+
+  struct sphere : public hittable {
+    point center;
+    double radius;
+    sphere(point c, double r) : center{c}, radius{r} {};
+
+    [[nodiscard]] std::optional<hit_record>
+    hit(double tmin, double tmax, const ray& r) const override {
+      vec3 oc = r.origin - center;                      // (A-C)
+      auto a = glm::dot(r.direction, r.direction);      // (b.b)
+      auto half_b = glm::dot(oc, r.direction);
+      auto c = glm::dot(oc, oc) - radius*radius;        // (A-C)(A-C) - r^2
+      auto discriminant = half_b*half_b - a*c;
+      if (discriminant < 0) return {};
+
+      auto root = (-half_b - std::sqrt(discriminant));
+      if (root < tmin || root > tmax) {
+        root = (-half_b + std::sqrt(discriminant));
+        if (root < tmin || root > tmax) return {};
+      }
+
+      auto hitpoint = r.at(root);
+      return hit_record{hitpoint, glm::normalize(hitpoint - center), root};
+
+    }
+  };
 
   /** Compute T of Ray R where it hits infinite slanted wall Z units away */
   double hit_background(double slant, const ray& r) {
@@ -49,20 +69,16 @@ namespace rtweekend {
 
   /** Say color of ray R */
   color ray_color(const ray& r) {
-    constexpr point sphere_center{0,0,-1};
-    constexpr double sphere_radius{0.5};
+    sphere s{point{0,0,-1}, 0.5};
 
-    double t{};  // hit point of our ray r.
-
-    t = hit_sphere(sphere_center, sphere_radius, r);
-    if (t > 0) {
-      auto normal = glm::normalize(r.at(t) - sphere_center);
-      return 0.5*(normal + vec3{1,1,1});
+    auto probe = s.hit(0, 100, r);
+    if (probe) {
+      return 0.5 * (probe->normal + vec3{1, 1, 1});
     }
 
-    t = hit_background(+1.0, r);
+    auto t = hit_background(+1.0, r);
     return
-      // lower t, whiter image, higher t, bluer image centered 
+      // lower t, whiter image, higher t, bluer image centered
       (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 }  // namespace rtweekend
