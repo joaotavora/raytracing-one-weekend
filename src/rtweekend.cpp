@@ -27,7 +27,20 @@ namespace rtweekend {
     vec3 at(double t) const {return origin + direction * t;}
   };
 
+  /** Tell if ray R hits sphere at CENTER with radius RADIUS */
+  bool hit_sphere(const point& center, double radius, const ray& r) {
+    //  x = -b +- sqrt(b^2 - 4ac)/2a
+    vec3 oc = r.origin - center;                      // (A-C)
+    auto a = glm::dot(r.direction, r.direction);      // (b.b)
+    auto b = 2.0 * glm::dot(oc, r.direction);         // 2b(A-C)
+    auto c = glm::dot(oc, oc) - radius*radius;        // (A-C)(A-C) - r^2
+    auto discriminant = b*b - 4*a*c;
+    return (discriminant > 0);
+  }
+
+  /** Say color of ray R */
   color ray_color(const ray& r) {
+    if (hit_sphere(vec3{0,0,-1}, 0.3, r)) return color{1.0, 0, 0};
     // I then did a standard graphics trick of scaling that to
     // 0.0≤t≤1.0. When t=1.0 I want blue. When t=0.0 I want
     // white. In between, I want a blend. This forms a “linear
@@ -42,8 +55,8 @@ namespace rtweekend {
     // t is between 0 and 1, proportional to y
     auto t = 0.5*(ycomp + 1.0);
     return
-      (1.0-t)*color(1.0, 1.0, 1.0) + // lower t, whiter image 
-      t*color(0.5, 0.7, 1.0); // higher t, bluer image
+      // lower t, whiter image, higher t, bluer image centered 
+      (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 }  // namespace rtweekend
 
