@@ -32,10 +32,10 @@ namespace rtweekend {
     //  x = -b +- sqrt(b^2 - 4ac)/2a
     vec3 oc = r.origin - center;                      // (A-C)
     auto a = glm::dot(r.direction, r.direction);      // (b.b)
-    auto b = 2.0 * glm::dot(oc, r.direction);         // 2b(A-C)
+    auto half_b = glm::dot(oc, r.direction);
     auto c = glm::dot(oc, oc) - radius*radius;        // (A-C)(A-C) - r^2
-    auto discriminant = b*b - 4*a*c;
-    if (discriminant > 0) return (-b - std::sqrt(discriminant))/(2 * a);
+    auto discriminant = half_b*half_b - a*c;
+    if (discriminant > 0) return (-half_b - std::sqrt(discriminant))/a;
     return -1;
   }
 
