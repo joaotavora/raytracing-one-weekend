@@ -24,9 +24,15 @@ namespace rtweekend::detail {
     return distribution(generator);
   }
 
+  color random_vec3(double min=0, double max=1.0) {
+    return vec3{random_double(min, max),
+                random_double(min, max),
+                random_double(min, max)};
+  }
+
   vec3 random_in_unit_sphere() {
     while (true) {
-      vec3 v{random_double(), random_double(), random_double()};
+      auto v = random_vec3();
       if (glm::length2(v) >= 1) continue;
       return v;
     }
@@ -45,7 +51,7 @@ namespace rtweekend::detail {
   }
 
   void write_color(std::ostream &out, color c, int samples_per_pixel) {
-    // Divide the color by the number of samples and correct with gamma=2 
+    // Divide the color by the number of samples and correct with gamma=2
 
     c = glm::sqrt(c / static_cast<double>(samples_per_pixel));
 
@@ -71,21 +77,19 @@ namespace rtweekend::detail {
     Ray r;
     color attenuation;
   };
-  
-  struct Material {
+
+  struct Material { // NOLINT
     [[nodiscard]] virtual std::optional<ScatterRecord>
     scatter(const Ray& r_in, const HitRecord& rec) const = 0;
+
+    virtual ~Material() = default;
   };
 
-  struct Hittable {
+  struct Hittable { // NOLINT
     [[nodiscard]] virtual std::optional<HitRecord>
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
     explicit Hittable(const Material& m) : material_{&m} {};
-    Hittable(const Hittable&) = default;
-    Hittable(Hittable&&) = default;
-    Hittable& operator=(const Hittable&) = delete;
-    Hittable& operator=(Hittable&&) = delete;
     virtual ~Hittable() = default;
     const Material& material() const {return *material_;}
   private:
@@ -140,12 +144,12 @@ namespace rtweekend::detail {
     scatter(const Ray& r, const HitRecord& rec) const override {
 
       auto unit_direction = glm::normalize(r.direction);
-      
+
       double cos_theta = dot(-unit_direction, rec.normal);
       double sin_theta = sqrt(1.0 - cos_theta*cos_theta);
 
       double refraction_ratio = rec.front_facing ? (1.0/ir) : ir;
-      
+
       bool cannot_refract = refraction_ratio * sin_theta > 1.0;
       vec3 direction;
 
@@ -187,7 +191,7 @@ namespace rtweekend::detail {
 
       auto root = (-h - std::sqrt(discriminant))/a;
       if (root < tmin || root > tmax) {
-        
+
         root = (-h + std::sqrt(discriminant))/a;
         if (root < tmin || root > tmax) return {};
       }
@@ -221,9 +225,9 @@ namespace rtweekend::detail {
 
       auto viewport_height = 2.0 * std::tan(fov * std::numbers::pi / 180 / 2);
       auto viewport_width = aspect_ratio * viewport_height;
-      
+
       auto fd = focus_dist?focus_dist.value():glm::length(lookfrom - lookat);
-      
+
       horizontal_ = fd * viewport_width * u_;
       vertical_   = fd * viewport_height * v_;
       lower_left_corner_ = origin_
@@ -243,7 +247,7 @@ namespace rtweekend::detail {
     point origin_;
 
     vec3 w_, u_, v_;
-    
+
     vec3 horizontal_{};
     vec3 vertical_{};
     point lower_left_corner_{};
@@ -266,7 +270,7 @@ namespace rtweekend::detail {
       if (max_depth <= 0) return {0,0,0};
 
       auto probe = closest->hittable->material().scatter(r, closest.value());
-      if (probe) 
+      if (probe)
         return probe->attenuation * ray_color(probe->r, world, max_depth-1);
       return {0,0,0};
     }
@@ -279,11 +283,13 @@ namespace rtweekend::detail {
     auto t =  0.5*(ycomp + +1.0);
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
+
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
   using detail::world_t;
   using detail::Sphere;
+  using detail::Material;
   using detail::Lambertian;
   using detail::Metal;
   using detail::Dielectric;
@@ -293,45 +299,74 @@ namespace rtweekend {
   using detail::random_double;
   using detail::ray_color;
   using detail::write_color;
+  using detail::random_vec3;
   using detail::Camera;
 }  // namespace rtweekend
 
 int main() {
   namespace rt=rtweekend;
-  constexpr double aspect_ratio = 16/9.0;
+  constexpr double aspect_ratio = 3.0/2.0;
 
   // Camera
-  rt::Camera cam{rt::point(-2,2,1),
-                 rt::point(0,0,-1),
+  rt::Camera cam{rt::point(13,2,3),
+                 rt::point(0,0,0),
                  rt::vec3(0,1,0),
                  20.0,
                  aspect_ratio,
-                 2.0
+                 0.1,
+                 10.0
                  };
-  
+
   // Image
-  constexpr int image_width = 400;
+  constexpr int image_width = 1200;
   constexpr int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
   constexpr int samples_per_pixel = 100;
-  constexpr int max_child_rays = 15;
+  constexpr int max_child_rays = 50;
 
-  // Materials
-  rt::Lambertian green_lamb{rt::color{0.8, 0.8, 0.0}};
-  rt::Lambertian reddish_lamb{rt::color{0.7, 0.3, 0.3}};
-  rt::Lambertian bluish_lamb{rt::color{0.1, 0.2, 0.5}};
-  rt::Metal neutral_metal{rt::color{0.8, 0.8, 0.8}, 0.3};
-  rt::Metal reddish_metal{rt::color{0.8, 0.6, 0.2}, 1.0};
-  rt::Dielectric glass{1.5};
-  
-  // World of spheres 
+  // World of spheres
   rt::world_t world{};
-  world.reserve(10);
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, 0.5, glass));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, -0.4, glass));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, bluish_lamb));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{1,0,-1}, 0.5, reddish_metal));
-  
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100, green_lamb));
+
+    // Materials
+  rt::Lambertian ground_material{rt::color{0.5, 0.5, 0.5}};
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material));
+
+  std::vector<std::unique_ptr<rt::Material>> materials{};
+
+
+  for (int a = -11; a < 11; a++) {
+    for (int b = -11; b < 11; b++) {
+      auto choose_mat = rt::random_double();
+      rt::point center(a+ 0.9*rt::random_double(), 0.2, b + 0.9*rt::random_double());
+
+      if (glm::length(center - rt::point{4,0.2,0}) > 0.9) {
+        if (choose_mat < 0.8) {
+          // diffuse
+          auto albedo = rt::random_vec3() * rt::random_vec3();
+          materials.push_back(std::make_unique<rt::Lambertian>(albedo));
+          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
+        } else if (choose_mat < 0.95) {
+          // metal
+          auto albedo = rt::random_vec3(0.5, 1);
+          auto fuzz = rt::random_double(0, 0.5);
+          materials.push_back(std::make_unique<rt::Metal>(albedo, fuzz));
+          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
+        } else {
+          // glass
+          materials.push_back(std::make_unique<rt::Dielectric>(1.5));
+          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
+        }
+      }
+    }
+  }
+
+  rt::Dielectric glass{1.5};
+  rt::Lambertian reddish{rt::color{0.4, 0.2, 0.1}};
+  rt::Metal reddish_metal{rt::color{0.7, 0.6, 0.5}};
+
+  world.push_back(std::make_unique<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal));
+
 
   // Render
 
@@ -349,7 +384,7 @@ int main() {
       }
       rt::write_color(std::cout, pixel_color, samples_per_pixel);
 
-      
+
     }
   }
 
