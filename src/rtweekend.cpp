@@ -32,6 +32,14 @@ namespace rtweekend::detail {
     }
   }
 
+  vec3 random_in_unit_disk() {
+    while (true) {
+      auto p = vec3(random_double(-1,1), random_double(-1,1), 0);
+      if (glm::length2(p) >= 1) continue;
+      return p;
+    }
+  }
+
   vec3 random_unit_vector() {
     return random_in_unit_sphere();
   }
@@ -200,33 +208,46 @@ namespace rtweekend::detail {
            point  lookat,
            vec3   vup,
            double fov,
-           double aspect_ratio) :
-      origin_{lookfrom} {
+           double aspect_ratio,
+           double aperture,
+           std::optional<double> focus_dist = std::nullopt) :
+      origin_{lookfrom},
+      w_{glm::normalize(lookfrom - lookat)},
+      u_{glm::normalize(glm::cross(vup, w_))},
+      v_{glm::normalize(glm::cross(w_, u_))},
+      lens_radius_{aperture/2}
+
+    {
 
       auto viewport_height = 2.0 * std::tan(fov * std::numbers::pi / 180 / 2);
       auto viewport_width = aspect_ratio * viewport_height;
       
-      auto w = glm::normalize(lookfrom - lookat);
-      auto u = glm::normalize(glm::cross(vup, w));
-      auto v = glm::cross(w, u);
+      auto fd = focus_dist?focus_dist.value():glm::length(lookfrom - lookat);
       
-      horizontal_ = viewport_width * u;
-      vertical_   = viewport_height * v;
+      horizontal_ = fd * viewport_width * u_;
+      vertical_   = fd * viewport_height * v_;
       lower_left_corner_ = origin_
         - horizontal_/2.0
         - vertical_/2.0
-        - w;
+        - fd * w_;
     }
 
     Ray get_ray(double s, double t) const {
-      return Ray{origin_, lower_left_corner_ + s*horizontal_ + t*vertical_ - origin_};
+      vec3 rd = lens_radius_ * random_in_unit_disk();
+      vec3 offset = u_ * rd.x + v_ * rd.y;
+      return Ray{origin_ + offset, lower_left_corner_ + s*horizontal_ + t*vertical_ - origin_ - offset};
     }
 
   private:
+
     point origin_;
+
+    vec3 w_, u_, v_;
+    
     vec3 horizontal_{};
     vec3 vertical_{};
     point lower_left_corner_{};
+    double lens_radius_;
   };
 
   using world_t = std::vector<std::unique_ptr<Hittable>>;
@@ -280,7 +301,13 @@ int main() {
   constexpr double aspect_ratio = 16/9.0;
 
   // Camera
-  rt::Camera cam{rt::point(-2,2,1), rt::point(0,0,-1), rt::vec3(0,1,0), 20.0, aspect_ratio};
+  rt::Camera cam{rt::point(-2,2,1),
+                 rt::point(0,0,-1),
+                 rt::vec3(0,1,0),
+                 20.0,
+                 aspect_ratio,
+                 2.0
+                 };
   
   // Image
   constexpr int image_width = 400;
