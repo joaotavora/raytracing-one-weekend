@@ -134,7 +134,7 @@ namespace rtweekend::detail {
     std::optional<Hittable::hit_record> closest{};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
-      auto probe = h->hit(r, 0, tmax);
+      auto probe = h->hit(r, 0.001, tmax);
       if (probe) {
         closest = probe;
         tmax = probe->t;
