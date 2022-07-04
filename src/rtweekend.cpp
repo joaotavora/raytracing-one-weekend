@@ -176,10 +176,10 @@ int main() {
   rt::Camera cam{};
   
   // Image
-  constexpr int image_width = 300;
+  constexpr int image_width = 400;
   constexpr int image_height = static_cast<int>(image_width/cam.aspect_ratio); // NOLINT
-  constexpr int samples_per_pixel = 30;
-  constexpr int max_child_rays = 10;
+  constexpr int samples_per_pixel = 100;
+  constexpr int max_child_rays = 15;
 
   // World of spheres
   rt::world_t world{};
