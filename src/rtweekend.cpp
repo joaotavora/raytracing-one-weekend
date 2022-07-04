@@ -1,3 +1,4 @@
+#include "glm/gtx/quaternion.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -195,28 +196,37 @@ namespace rtweekend::detail {
   class Camera {
   public:
     static constexpr auto focal_length = 1.0;
-    Camera(double fov, double aspect_ratio) :
-      viewport_height_{2.0 * std::tan(fov * std::numbers::pi / 180 / 2)},
-      origin_{point{0,0,0}},
-      horizontal_{vec3{aspect_ratio * viewport_height_, 0, 0}},
-      vertical_{vec3{0, viewport_height_, 0}},
-      lower_left_corner_{origin_
-                         - horizontal_/2.0
-                         - vertical_/2.0
-                         - vec3(0,0,focal_length)}
-               
-    {}
+    Camera(point  lookfrom,
+           point  lookat,
+           vec3   vup,
+           double fov,
+           double aspect_ratio) :
+      origin_{lookfrom} {
 
-    Ray get_ray(double u, double v) const {
-      return Ray{origin_, lower_left_corner_ + u*horizontal_ + v*vertical_ - origin_};
+      auto viewport_height = 2.0 * std::tan(fov * std::numbers::pi / 180 / 2);
+      auto viewport_width = aspect_ratio * viewport_height;
+      
+      auto w = glm::normalize(lookfrom - lookat);
+      auto u = glm::normalize(glm::cross(vup, w));
+      auto v = glm::cross(w, u);
+      
+      horizontal_ = viewport_width * u;
+      vertical_   = viewport_height * v;
+      lower_left_corner_ = origin_
+        - horizontal_/2.0
+        - vertical_/2.0
+        - w;
+    }
+
+    Ray get_ray(double s, double t) const {
+      return Ray{origin_, lower_left_corner_ + s*horizontal_ + t*vertical_ - origin_};
     }
 
   private:
-    double viewport_height_;
     point origin_;
-    vec3 horizontal_;
-    vec3 vertical_;
-    point lower_left_corner_;
+    vec3 horizontal_{};
+    vec3 vertical_{};
+    point lower_left_corner_{};
   };
 
   using world_t = std::vector<std::unique_ptr<Hittable>>;
@@ -257,6 +267,7 @@ namespace rtweekend {
   using detail::Metal;
   using detail::Dielectric;
   using detail::point;
+  using detail::vec3;
   using detail::color;
   using detail::random_double;
   using detail::ray_color;
@@ -269,7 +280,7 @@ int main() {
   constexpr double aspect_ratio = 16/9.0;
 
   // Camera
-  rt::Camera cam{90.0, aspect_ratio};
+  rt::Camera cam{rt::point(-2,2,1), rt::point(0,0,-1), rt::vec3(0,1,0), 20.0, aspect_ratio};
   
   // Image
   constexpr int image_width = 400;
