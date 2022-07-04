@@ -1,19 +1,21 @@
+#include "glm/geometric.hpp"
 #include <cmath>
 #include <iostream>
 #include <glm/glm.hpp>
+#include <glm/gtx/norm.hpp>
 #include <functional>
 #include <limits>
 #include <optional>
 #include <memory>
 #include <random>
 
-namespace rtweekend {
+namespace rtweekend::detail {
   using vec3 = glm::dvec3;
   using color = glm::dvec3;
   using point = glm::dvec3;
 
-  inline double random_double() {
-    static std::uniform_real_distribution<double> distribution(0.0, 1.0);
+  inline double random_double(double a=0, double b=1.0) {
+    static std::uniform_real_distribution<double> distribution(a, b);
     static std::mt19937 generator;
     return distribution(generator);
   }
@@ -98,9 +100,9 @@ namespace rtweekend {
                horizontal_{vec3{viewport_width, 0, 0}},
                vertical_{vec3{0, viewport_height, 0}},
                lower_left_corner_{origin_
-                                 - horizontal_/2.0
-                                 - vertical_/2.0
-                                 - vec3(0,0,focal_length)}
+                                  - horizontal_/2.0
+                                  - vertical_/2.0
+                                  - vec3(0,0,focal_length)}
                
     {}
 
@@ -117,7 +119,15 @@ namespace rtweekend {
 
   using world_t = std::vector<std::unique_ptr<Hittable>>;
 
-  color ray_color(const Ray& r, const world_t& world) {
+  vec3 random_in_unit_sphere() {
+    while (true) {
+      vec3 v{random_double(), random_double(), random_double()};
+      if (glm::length2(v) >= 1) continue;
+      return v;
+    }
+  }
+  
+  color ray_color(const Ray& r, const world_t& world, size_t max_depth=20) {
     std::optional<Hittable::hit_record> closest{};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
@@ -127,7 +137,13 @@ namespace rtweekend {
         tmax = probe->t;
       }
     }
-    if (closest) return 0.5 * (closest->normal + vec3{1, 1, 1});
+    if (closest) {
+      if (max_depth <= 0) return {0,0,0};
+      point target = closest->p + closest->normal + random_in_unit_sphere();
+      return 0.5 * ray_color(Ray{closest->p, target - closest->p},
+                             world, 
+                             max_depth-1);
+    }
 
     // Fallback to background
     // t is between 0 and 1, proportional to y
@@ -137,26 +153,36 @@ namespace rtweekend {
     auto t =  0.5*(ycomp + +1.0);
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
-}  // namespace rtweekend
+}  // namespace rtweekend::detail
 
+namespace rtweekend {
+  using detail::world_t;
+  using detail::Sphere;
+  using detail::point;
+  using detail::color;
+  using detail::random_double;
+  using detail::ray_color;
+  using detail::write_color;
+  using detail::Camera;
+}
 
 int main() {
-
   namespace rt=rtweekend;
+
+  // Camera
+  rt::Camera cam{};
+  
   // Image
-  constexpr auto aspect_ratio = 16.0/9.0;
-  constexpr int image_width = 200;
-  constexpr int image_height = static_cast<int>(image_width/aspect_ratio);
-  constexpr int samples_per_pixel = 50;
+  constexpr int image_width = 300;
+  constexpr int image_height = static_cast<int>(image_width/cam.aspect_ratio); // NOLINT
+  constexpr int samples_per_pixel = 30;
+  constexpr int max_child_rays = 10;
 
   // World of spheres
   rt::world_t world{};
   world.reserve(10);
   world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5));
   world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100));
-
-  // Camera
-  rt::Camera cam{};
 
   // Render
 
@@ -170,7 +196,7 @@ int main() {
         auto u = (i + rt::random_double()) / (image_width-1);   // sweep [0 -> 1]
         auto v = (j + rt::random_double()) / (image_height-1);  // sweep [1 -> 0]
         auto r = cam.get_ray(u, v);
-        pixel_color += rt::ray_color(r, world);
+        pixel_color += rt::ray_color(r, world, max_child_rays);
       }
       rt::write_color(std::cout, pixel_color, samples_per_pixel);
 
