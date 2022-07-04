@@ -35,7 +35,7 @@ namespace rtweekend::detail {
   vec3 random_unit_vector() {
     return random_in_unit_sphere();
   }
-  
+
   void write_color(std::ostream &out, color c, int samples_per_pixel) {
     // Divide the color by the number of samples and correct with gamma=2 
 
@@ -89,6 +89,7 @@ namespace rtweekend::detail {
     vec3 normal;
     double t;
     const Hittable* hittable;
+    bool front_facing;
   };
 
   struct Lambertian : public Material {
@@ -113,7 +114,7 @@ namespace rtweekend::detail {
 
     std::optional<ScatterRecord>
     scatter(const Ray& r, const HitRecord& rec) const override {
-      auto reflected = r.direction - 2 * glm::dot(rec.normal, r.direction) * rec.normal;
+      auto reflected = glm::reflect(r.direction, rec.normal);
 
       return ScatterRecord{.r = Ray{rec.p, reflected + fuzz*random_unit_vector()},
                            .attenuation = albedo};
@@ -121,6 +122,45 @@ namespace rtweekend::detail {
 
     color albedo;
     double fuzz;
+  };
+
+  struct Dielectric : public Material {
+    explicit Dielectric(double index_of_refraction, double fuzz=0)
+      : ir{index_of_refraction}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
+
+    std::optional<ScatterRecord>
+    scatter(const Ray& r, const HitRecord& rec) const override {
+
+      auto unit_direction = glm::normalize(r.direction);
+      
+      double cos_theta = dot(-unit_direction, rec.normal);
+      double sin_theta = sqrt(1.0 - cos_theta*cos_theta);
+
+      double refraction_ratio = rec.front_facing ? (1.0/ir) : ir;
+      
+      bool cannot_refract = refraction_ratio * sin_theta > 1.0;
+      vec3 direction;
+
+      if (cannot_refract || reflectance(cos_theta, refraction_ratio) > random_double())
+        direction = glm::reflect(unit_direction, rec.normal);
+      else
+        direction = glm::refract(unit_direction, rec.normal, refraction_ratio);
+
+
+      return ScatterRecord{.r = Ray{rec.p,
+                                    direction
+                                    + fuzz*random_unit_vector()},
+                           .attenuation = {1.0, 1.0, 1.0}};
+    }
+    double ir;
+    double fuzz;
+  private:
+    static double reflectance(double cosine, double ref_idx) {
+      // Use Schlick's approximation for reflectance.
+      auto r0 = (1-ref_idx) / (1+ref_idx);
+      r0 = r0*r0;
+      return r0 + (1-r0)*pow((1 - cosine),5);
+    }
   };
 
   struct Sphere : public Hittable {
@@ -147,9 +187,9 @@ namespace rtweekend::detail {
       auto hitpoint = r.at(root);
       auto normal = glm::normalize(hitpoint - center);
 
-      // normal = glm::faceforward(normal, r.direction, normal);
-      normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return HitRecord{hitpoint, normal, root, this};
+      bool front_facing = (glm::dot(r.direction, normal) < 0) ^ (radius < 0);
+      normal = front_facing?normal:-normal;
+      return HitRecord{hitpoint, normal, root, this, front_facing};
     }
   };
 
@@ -216,6 +256,7 @@ namespace rtweekend {
   using detail::Sphere;
   using detail::Lambertian;
   using detail::Metal;
+  using detail::Dielectric;
   using detail::point;
   using detail::color;
   using detail::random_double;
@@ -239,14 +280,17 @@ int main() {
   // Materials
   rt::Lambertian green_lamb{rt::color{0.8, 0.8, 0.0}};
   rt::Lambertian reddish_lamb{rt::color{0.7, 0.3, 0.3}};
+  rt::Lambertian bluish_lamb{rt::color{0.1, 0.2, 0.5}};
   rt::Metal neutral_metal{rt::color{0.8, 0.8, 0.8}, 0.3};
   rt::Metal reddish_metal{rt::color{0.8, 0.6, 0.2}, 1.0};
+  rt::Dielectric glass{1.5};
   
-  // World of spheres
+  // World of spheres 
   rt::world_t world{};
   world.reserve(10);
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, reddish_lamb));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, 0.5, neutral_metal));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, 0.5, glass));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, -0.4, glass));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, bluish_lamb));
   world.push_back(std::make_unique<rt::Sphere>(rt::point{1,0,-1}, 0.5, reddish_metal));
   
   world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100, green_lamb));
