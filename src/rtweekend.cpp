@@ -85,7 +85,7 @@ namespace rtweekend::detail {
     point p;
     vec3 normal;
     double t;
-    const Hittable& hittable;
+    Hittable const* hittable;
   };
 
   struct Lambertian : public Material {
@@ -124,7 +124,7 @@ namespace rtweekend::detail {
 
       // normal = glm::faceforward(normal, r.direction, normal);
       normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return HitRecord{hitpoint, normal, root, *this};
+      return HitRecord{hitpoint, normal, root, this};
 
     }
   };
@@ -159,16 +159,16 @@ namespace rtweekend::detail {
   using world_t = std::vector<std::unique_ptr<Hittable>>;
 
   color ray_color(const Ray& r, const world_t& world, size_t max_depth=20) {
-    HitRecord* closest{nullptr};
+    std::optional<HitRecord> closest{};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
       auto probe = h->hit(r, 0.001, tmax);
       if (probe) {
-        closest = &probe.value();
+        closest = probe;
         tmax = probe->t;
       }
     }
-    if (closest != nullptr) {
+    if (closest) {
       if (max_depth <= 0) return {0,0,0};
       point target = closest->p + closest->normal + random_in_unit_sphere();
       return 0.5 * ray_color(Ray{closest->p, target - closest->p},
