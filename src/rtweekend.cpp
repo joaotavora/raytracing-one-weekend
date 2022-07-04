@@ -5,53 +5,63 @@
 #include <limits>
 #include <optional>
 #include <memory>
+#include <random>
 
 namespace rtweekend {
   using vec3 = glm::dvec3;
-  using color = vec3;
+  using color = glm::dvec3;
   using point = glm::dvec3;
 
-  void write_color(std::ostream &out, color pixel_color) {
+  inline double random_double() {
+    static std::uniform_real_distribution<double> distribution(0.0, 1.0);
+    static std::mt19937 generator;
+    return distribution(generator);
+  }
+
+  void write_color(std::ostream &out, color pixel_color, [[maybe_unused]] int samples_per_pixel) {
+    // Divide the color by the number of samples.
+    pixel_color /= samples_per_pixel;
+    
     // Write the translated [0,255] value of each color component.
-    out << static_cast<int>(255.999 * pixel_color.x) << ' '
-        << static_cast<int>(255.999 * pixel_color.y) << ' '
-        << static_cast<int>(255.999 * pixel_color.z) << '\n';
+    out << static_cast<int>(255.999 * pixel_color.r) << ' '
+        << static_cast<int>(255.999 * pixel_color.g) << ' '
+        << static_cast<int>(255.999 * pixel_color.b) << '\n';
   }
 
   std::ostream& operator<<(std::ostream& o, const vec3& x) {
     return o << "{" << x.x << "," << x.y << "," << x.z << "}";
   }
 
-  struct ray {
+  struct Ray {
     vec3 origin{};
     vec3 direction{};
     vec3 at(double t) const {return origin + direction * t;}
   };
 
-  struct hittable {
+  struct Hittable {
     struct hit_record {
       point p;
       vec3 normal;
       double t;
     };
     [[nodiscard]] virtual std::optional<hit_record>
-    hit(const ray& r, double tmin, double tmax) const = 0;
+    hit(const Ray& r, double tmin, double tmax) const = 0;
 
-    hittable() = default;
-    hittable(const hittable&) = default;
-    hittable(hittable&&) = default;
-    hittable& operator=(const hittable&) = default;
-    hittable& operator=(hittable&&) = default;
-    virtual ~hittable() = default;
+    Hittable() = default;
+    Hittable(const Hittable&) = default;
+    Hittable(Hittable&&) = default;
+    Hittable& operator=(const Hittable&) = default;
+    Hittable& operator=(Hittable&&) = default;
+    virtual ~Hittable() = default;
   };
 
-  struct sphere : public hittable {
+  struct Sphere : public Hittable {
     point center;
     double radius;
-    sphere(point c, double r) : center{c}, radius{r} {};
+    Sphere(point c, double r) : center{c}, radius{r} {};
 
     [[nodiscard]] std::optional<hit_record>
-    hit(const ray& r, double tmin, double tmax) const override {
+    hit(const Ray& r, double tmin, double tmax) const override {
       vec3 oc = r.origin - center;                      // (A-C)
       double a = glm::dot(r.direction, r.direction);    // (b.b)
       auto h = glm::dot(oc, r.direction);               // (A-C).b
@@ -78,19 +88,37 @@ namespace rtweekend {
     }
   };
 
-  /** Compute T of Ray R where it hits infinite slanted wall Z units away */
-  double hit_background(double slant, const ray& r) {
-    vec3 unit_direction = glm::normalize(r.direction);
-    auto ycomp = unit_direction.y;
-    // t is between 0 and 1, proportional to y
-    return 0.5*(ycomp + slant);
-  }
+  class Camera {
+  public:
+    static constexpr auto aspect_ratio = 16.0 / 9.0;
+    static constexpr auto viewport_height = 2.0;
+    static constexpr auto viewport_width = aspect_ratio * viewport_height;
+    static constexpr auto focal_length = 1.0;
+    Camera() : origin_{point{0,0,0}},
+               horizontal_{vec3{viewport_width, 0, 0}},
+               vertical_{vec3{0, viewport_height, 0}},
+               lower_left_corner_{origin_
+                                 - horizontal_/2.0
+                                 - vertical_/2.0
+                                 - vec3(0,0,focal_length)}
+               
+    {}
 
-  using world_t = std::vector<std::unique_ptr<hittable>>;
+    Ray get_ray(double u, double v) const {
+      return Ray{origin_, lower_left_corner_ + u*horizontal_ + v*vertical_ - origin_};
+    }
 
-  /** Say color of ray R */
-  color ray_color(const ray& r, const world_t& world) {
-    std::optional<hittable::hit_record> closest{};
+  private:
+    point origin_;
+    vec3 horizontal_;
+    vec3 vertical_;
+    point lower_left_corner_;
+  };
+
+  using world_t = std::vector<std::unique_ptr<Hittable>>;
+
+  color ray_color(const Ray& r, const world_t& world) {
+    std::optional<Hittable::hit_record> closest{};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
       auto probe = h->hit(r, 0, tmax);
@@ -99,14 +127,15 @@ namespace rtweekend {
         tmax = probe->t;
       }
     }
-    if (closest) {
-      return 0.5 * (closest->normal + vec3{1, 1, 1});
-    }
-    
-    auto t = hit_background(+1.0, r);
-    return
-      // lower t, whiter image, higher t, bluer image centered
-      (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
+    if (closest) return 0.5 * (closest->normal + vec3{1, 1, 1});
+
+    // Fallback to background
+    // t is between 0 and 1, proportional to y
+    // lower t, whiter image, higher t, bluer image centered
+    vec3 unit_direction = glm::normalize(r.direction);
+    auto ycomp = unit_direction.y;
+    auto t =  0.5*(ycomp + +1.0);
+    return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 }  // namespace rtweekend
 
@@ -115,27 +144,19 @@ int main() {
 
   namespace rt=rtweekend;
   // Image
-
   constexpr auto aspect_ratio = 16.0/9.0;
-  constexpr int image_width = 800;
+  constexpr int image_width = 200;
   constexpr int image_height = static_cast<int>(image_width/aspect_ratio);
+  constexpr int samples_per_pixel = 50;
 
-
-  auto viewport_height = 2.0;
-  auto viewport_width = aspect_ratio * viewport_height;
-  auto focal_length = 1.0;
-
-  auto origin = rt::vec3{0,0,0};
-  auto horizontal = rt::vec3{viewport_width, 0, 0};
-  auto vertical = rt::vec3{0, viewport_height, 0};
-  auto lower_left_corner =
-    origin - horizontal/2.0 - vertical/2.0 - rt::vec3{0, 0, focal_length};
-
-  // world of spheres
+  // World of spheres
   rt::world_t world{};
   world.reserve(10);
-  world.push_back(std::make_unique<rt::sphere>(rt::point{0,0,-1}, 0.5));
-  world.push_back(std::make_unique<rt::sphere>(rt::point{0,-100.5,-1}, 100));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100));
+
+  // Camera
+  rt::Camera cam{};
 
   // Render
 
@@ -144,15 +165,16 @@ int main() {
   for (int j = image_height-1; j >= 0; --j) {
     std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
     for (int i = 0; i < image_width; ++i) {
-      auto u = double(i) / (image_width-1);   // sweep [0 -> 1]
-      auto v = double(j) / (image_height-1);  // sweep [1 -> 0]
-      rt::ray r{
-        .origin   = origin,
-        .direction= (lower_left_corner + u*horizontal + v*vertical) - origin
-      };
-      rt::color pixel_color = rt::ray_color(r, world);
+      rt::color pixel_color{0,0,0};
+      for (int s = 0; s < samples_per_pixel; ++s) {
+        auto u = (i + rt::random_double()) / (image_width-1);   // sweep [0 -> 1]
+        auto v = (j + rt::random_double()) / (image_height-1);  // sweep [1 -> 0]
+        auto r = cam.get_ray(u, v);
+        pixel_color += rt::ray_color(r, world);
+      }
+      rt::write_color(std::cout, pixel_color, samples_per_pixel);
 
-      rt::write_color(std::cout, pixel_color);
+      
     }
   }
 
