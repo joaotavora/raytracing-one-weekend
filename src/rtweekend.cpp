@@ -1,4 +1,6 @@
+#include "glm/exponential.hpp"
 #include "glm/geometric.hpp"
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <glm/glm.hpp>
@@ -20,14 +22,15 @@ namespace rtweekend::detail {
     return distribution(generator);
   }
 
-  void write_color(std::ostream &out, color pixel_color, [[maybe_unused]] int samples_per_pixel) {
-    // Divide the color by the number of samples.
-    pixel_color /= samples_per_pixel;
-    
+  void write_color(std::ostream &out, color c, int samples_per_pixel) {
+    // Divide the color by the number of samples and correct with gamma=2 
+
+    c = glm::sqrt(c / static_cast<double>(samples_per_pixel));
+
     // Write the translated [0,255] value of each color component.
-    out << static_cast<int>(255.999 * pixel_color.r) << ' '
-        << static_cast<int>(255.999 * pixel_color.g) << ' '
-        << static_cast<int>(255.999 * pixel_color.b) << '\n';
+    out << static_cast<int>(256 * std::clamp(c.r, 0.0, 0.999)) << ' '
+        << static_cast<int>(256 * std::clamp(c.g, 0.0, 0.999)) << ' '
+        << static_cast<int>(256 * std::clamp(c.b, 0.0, 0.999)) << '\n';
   }
 
   std::ostream& operator<<(std::ostream& o, const vec3& x) {
