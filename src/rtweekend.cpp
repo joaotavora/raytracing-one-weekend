@@ -1,10 +1,12 @@
-#include "glm/exponential.hpp"
-#include "glm/geometric.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <glm/gtc/epsilon.hpp>
+#include <glm/exponential.hpp>
+#include <glm/geometric.hpp>
 #include <functional>
 #include <limits>
 #include <optional>
@@ -71,28 +73,34 @@ namespace rtweekend::detail {
     [[nodiscard]] virtual std::optional<HitRecord>
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
-    explicit Hittable(const Material& m) : material{m} {};
+    explicit Hittable(const Material& m) : material_{&m} {};
     Hittable(const Hittable&) = default;
     Hittable(Hittable&&) = default;
     Hittable& operator=(const Hittable&) = delete;
     Hittable& operator=(Hittable&&) = delete;
     virtual ~Hittable() = default;
-
-    std::reference_wrapper<const Material> material;
+    const Material& material() const {return *material_;}
+  private:
+    const Material* material_;
   };
 
   struct HitRecord {
     point p;
     vec3 normal;
     double t;
-    std::reference_wrapper<const Hittable> hittable;
+    const Hittable* hittable;
   };
 
   struct Lambertian : public Material {
     explicit Lambertian(const color& albedo) : albedo{albedo} {}
     std::optional<ScatterRecord>
     scatter([[maybe_unused]]const Ray& a, const HitRecord& rec) const override {
-      return ScatterRecord{.r = Ray{rec.p, rec.normal + random_unit_vector()},
+      auto rand = random_unit_vector();
+      if (glm::all(glm::epsilonEqual(rec.normal, rand, 1e-8))) {
+        return {};
+      }
+      auto scatter_direction = rec.normal + rand;
+      return ScatterRecord{.r = Ray{rec.p, scatter_direction},
                            .attenuation = albedo};
     }
     color albedo;
@@ -124,7 +132,7 @@ namespace rtweekend::detail {
 
       // normal = glm::faceforward(normal, r.direction, normal);
       normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return HitRecord{hitpoint, normal, root, *this};
+      return HitRecord{hitpoint, normal, root, this};
     }
   };
 
@@ -169,10 +177,10 @@ namespace rtweekend::detail {
     }
     if (closest) {
       if (max_depth <= 0) return {0,0,0};
-      point target = closest->p + closest->normal + random_in_unit_sphere();
-      return 0.5 * ray_color(Ray{closest->p, target - closest->p},
-                             world, 
-                             max_depth-1);
+
+      auto probe = closest->hittable->material().scatter(r, closest.value());
+      if (probe) 
+        return probe->attenuation * ray_color(probe->r, world, max_depth-1);
     }
 
     // Fallback to background
