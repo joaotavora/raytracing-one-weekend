@@ -108,16 +108,19 @@ namespace rtweekend::detail {
   };
 
   struct Metal : public Material {
-    explicit Metal(const color& albedo) : albedo{albedo} {}
+    explicit Metal(const color& albedo, double fuzz=0)
+      : albedo{albedo}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
 
     std::optional<ScatterRecord>
     scatter(const Ray& r, const HitRecord& rec) const override {
-      auto n = glm::dot(rec.normal, r.direction);
-      return ScatterRecord{.r = Ray{rec.p, r.direction - 2 * n * rec.normal},
+      auto reflected = r.direction - 2 * glm::dot(rec.normal, r.direction) * rec.normal;
+
+      return ScatterRecord{.r = Ray{rec.p, reflected + fuzz*random_unit_vector()},
                            .attenuation = albedo};
     }
 
     color albedo;
+    double fuzz;
   };
 
   struct Sphere : public Hittable {
@@ -235,14 +238,14 @@ int main() {
 
   // Materials
   rt::Lambertian green_lamb{rt::color{0.8, 0.8, 0.0}};
-  rt::Lambertian neutral_lamb{rt::color{0.5, 0.5, 0.5}};
-  rt::Metal neutral_metal{rt::color{0.8, 0.8, 0.8}};
-  rt::Metal reddish_metal{rt::color{0.8, 0.6, 0.2}};
+  rt::Lambertian reddish_lamb{rt::color{0.7, 0.3, 0.3}};
+  rt::Metal neutral_metal{rt::color{0.8, 0.8, 0.8}, 0.3};
+  rt::Metal reddish_metal{rt::color{0.8, 0.6, 0.2}, 1.0};
   
   // World of spheres
   rt::world_t world{};
   world.reserve(10);
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, neutral_lamb));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, reddish_lamb));
   world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, 0.5, neutral_metal));
   world.push_back(std::make_unique<rt::Sphere>(rt::point{1,0,-1}, 0.5, reddish_metal));
   
