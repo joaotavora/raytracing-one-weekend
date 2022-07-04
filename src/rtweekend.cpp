@@ -93,8 +93,9 @@ namespace rtweekend::detail {
 
   struct Lambertian : public Material {
     explicit Lambertian(const color& albedo) : albedo{albedo} {}
+
     std::optional<ScatterRecord>
-    scatter([[maybe_unused]]const Ray& a, const HitRecord& rec) const override {
+    scatter(const Ray&, const HitRecord& rec) const override {
       auto rand = random_unit_vector();
       if (glm::all(glm::epsilonEqual(rec.normal, rand, 1e-8))) {
         return {};
@@ -103,6 +104,19 @@ namespace rtweekend::detail {
       return ScatterRecord{.r = Ray{rec.p, scatter_direction},
                            .attenuation = albedo};
     }
+    color albedo;
+  };
+
+  struct Metal : public Material {
+    explicit Metal(const color& albedo) : albedo{albedo} {}
+
+    std::optional<ScatterRecord>
+    scatter(const Ray& r, const HitRecord& rec) const override {
+      auto n = glm::dot(rec.normal, r.direction);
+      return ScatterRecord{.r = Ray{rec.p, r.direction - 2 * n * rec.normal},
+                           .attenuation = albedo};
+    }
+
     color albedo;
   };
 
@@ -181,6 +195,7 @@ namespace rtweekend::detail {
       auto probe = closest->hittable->material().scatter(r, closest.value());
       if (probe) 
         return probe->attenuation * ray_color(probe->r, world, max_depth-1);
+      return {0,0,0};
     }
 
     // Fallback to background
@@ -197,6 +212,7 @@ namespace rtweekend {
   using detail::world_t;
   using detail::Sphere;
   using detail::Lambertian;
+  using detail::Metal;
   using detail::point;
   using detail::color;
   using detail::random_double;
@@ -218,13 +234,19 @@ int main() {
   constexpr int max_child_rays = 15;
 
   // Materials
-  rt::Lambertian lamb{rt::color{0.5, 0.5, 0.5}};
+  rt::Lambertian green_lamb{rt::color{0.8, 0.8, 0.0}};
+  rt::Lambertian neutral_lamb{rt::color{0.5, 0.5, 0.5}};
+  rt::Metal neutral_metal{rt::color{0.8, 0.8, 0.8}};
+  rt::Metal reddish_metal{rt::color{0.8, 0.6, 0.2}};
   
   // World of spheres
   rt::world_t world{};
   world.reserve(10);
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, lamb));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100, lamb));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, neutral_lamb));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{-1,0,-1}, 0.5, neutral_metal));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{1,0,-1}, 0.5, reddish_metal));
+  
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100, green_lamb));
 
   // Render
 
