@@ -85,7 +85,7 @@ namespace rtweekend::detail {
     point p;
     vec3 normal;
     double t;
-    Hittable const* hittable;
+    std::reference_wrapper<const Hittable> hittable;
   };
 
   struct Lambertian : public Material {
@@ -124,8 +124,7 @@ namespace rtweekend::detail {
 
       // normal = glm::faceforward(normal, r.direction, normal);
       normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return HitRecord{hitpoint, normal, root, this};
-
+      return HitRecord{hitpoint, normal, root, std::ref(*this)};
     }
   };
 
@@ -239,5 +238,5 @@ int main() {
     }
   }
 
-  std::cerr << "\nDone.\n";
+  std::cerr << "\nDone (also " << sizeof(rt::detail::HitRecord) << ").\n";
 }
