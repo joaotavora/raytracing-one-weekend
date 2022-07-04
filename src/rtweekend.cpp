@@ -1,4 +1,3 @@
-
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -195,17 +194,16 @@ namespace rtweekend::detail {
 
   class Camera {
   public:
-    static constexpr auto aspect_ratio = 16.0 / 9.0;
-    static constexpr auto viewport_height = 2.0;
-    static constexpr auto viewport_width = aspect_ratio * viewport_height;
     static constexpr auto focal_length = 1.0;
-    Camera() : origin_{point{0,0,0}},
-               horizontal_{vec3{viewport_width, 0, 0}},
-               vertical_{vec3{0, viewport_height, 0}},
-               lower_left_corner_{origin_
-                                  - horizontal_/2.0
-                                  - vertical_/2.0
-                                  - vec3(0,0,focal_length)}
+    Camera(double fov, double aspect_ratio) :
+      viewport_height_{2.0 * std::tan(fov * std::numbers::pi / 180 / 2)},
+      origin_{point{0,0,0}},
+      horizontal_{vec3{aspect_ratio * viewport_height_, 0, 0}},
+      vertical_{vec3{0, viewport_height_, 0}},
+      lower_left_corner_{origin_
+                         - horizontal_/2.0
+                         - vertical_/2.0
+                         - vec3(0,0,focal_length)}
                
     {}
 
@@ -214,6 +212,7 @@ namespace rtweekend::detail {
     }
 
   private:
+    double viewport_height_;
     point origin_;
     vec3 horizontal_;
     vec3 vertical_;
@@ -267,13 +266,14 @@ namespace rtweekend {
 
 int main() {
   namespace rt=rtweekend;
+  constexpr double aspect_ratio = 16/9.0;
 
   // Camera
-  rt::Camera cam{};
+  rt::Camera cam{90.0, aspect_ratio};
   
   // Image
   constexpr int image_width = 400;
-  constexpr int image_height = static_cast<int>(image_width/cam.aspect_ratio); // NOLINT
+  constexpr int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
   constexpr int samples_per_pixel = 100;
   constexpr int max_child_rays = 15;
 
