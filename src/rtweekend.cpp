@@ -22,6 +22,18 @@ namespace rtweekend::detail {
     return distribution(generator);
   }
 
+  vec3 random_in_unit_sphere() {
+    while (true) {
+      vec3 v{random_double(), random_double(), random_double()};
+      if (glm::length2(v) >= 1) continue;
+      return v;
+    }
+  }
+
+  vec3 random_unit_vector() {
+    return random_in_unit_sphere();
+  }
+  
   void write_color(std::ostream &out, color c, int samples_per_pixel) {
     // Divide the color by the number of samples and correct with gamma=2 
 
@@ -43,29 +55,55 @@ namespace rtweekend::detail {
     vec3 at(double t) const {return origin + direction * t;}
   };
 
+  struct HitRecord;
+
+  struct ScatterRecord {
+    Ray r;
+    color attenuation;
+  };
+  
+  struct Material {
+    [[nodiscard]] virtual std::optional<ScatterRecord>
+    scatter(const Ray& r_in, const HitRecord& rec) const = 0;
+  };
+
   struct Hittable {
-    struct hit_record {
-      point p;
-      vec3 normal;
-      double t;
-    };
-    [[nodiscard]] virtual std::optional<hit_record>
+    [[nodiscard]] virtual std::optional<HitRecord>
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
-    Hittable() = default;
+    explicit Hittable(const Material& m) : material{m} {};
     Hittable(const Hittable&) = default;
     Hittable(Hittable&&) = default;
-    Hittable& operator=(const Hittable&) = default;
-    Hittable& operator=(Hittable&&) = default;
+    Hittable& operator=(const Hittable&) = delete;
+    Hittable& operator=(Hittable&&) = delete;
     virtual ~Hittable() = default;
+
+    const Material& material;
+  };
+
+  struct HitRecord {
+    point p;
+    vec3 normal;
+    double t;
+    const Hittable& hittable;
+  };
+
+  struct Lambertian : public Material {
+    explicit Lambertian(const color& albedo) : albedo{albedo} {}
+    std::optional<ScatterRecord>
+    scatter([[maybe_unused]]const Ray& a, const HitRecord& rec) const override {
+      return ScatterRecord{.r = Ray{rec.p, rec.normal + random_unit_vector()},
+                           .attenuation = albedo};
+    }
+    color albedo;
   };
 
   struct Sphere : public Hittable {
     point center;
     double radius;
-    Sphere(point c, double r) : center{c}, radius{r} {};
+    Sphere(point c, double r, const Material& m) : Hittable{m}, center{c}, radius{r} {};
 
-    [[nodiscard]] std::optional<hit_record>
+    [[nodiscard]] std::optional<HitRecord>
     hit(const Ray& r, double tmin, double tmax) const override {
       vec3 oc = r.origin - center;                      // (A-C)
       double a = glm::dot(r.direction, r.direction);    // (b.b)
@@ -86,9 +124,7 @@ namespace rtweekend::detail {
 
       // normal = glm::faceforward(normal, r.direction, normal);
       normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return hit_record{hitpoint,
-                        normal,
-                        root};
+      return HitRecord{hitpoint, normal, root, *this};
 
     }
   };
@@ -122,25 +158,17 @@ namespace rtweekend::detail {
 
   using world_t = std::vector<std::unique_ptr<Hittable>>;
 
-  vec3 random_in_unit_sphere() {
-    while (true) {
-      vec3 v{random_double(), random_double(), random_double()};
-      if (glm::length2(v) >= 1) continue;
-      return v;
-    }
-  }
-  
   color ray_color(const Ray& r, const world_t& world, size_t max_depth=20) {
-    std::optional<Hittable::hit_record> closest{};
+    HitRecord* closest{nullptr};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
       auto probe = h->hit(r, 0.001, tmax);
       if (probe) {
-        closest = probe;
+        closest = &probe.value();
         tmax = probe->t;
       }
     }
-    if (closest) {
+    if (closest != nullptr) {
       if (max_depth <= 0) return {0,0,0};
       point target = closest->p + closest->normal + random_in_unit_sphere();
       return 0.5 * ray_color(Ray{closest->p, target - closest->p},
@@ -161,13 +189,14 @@ namespace rtweekend::detail {
 namespace rtweekend {
   using detail::world_t;
   using detail::Sphere;
+  using detail::Lambertian;
   using detail::point;
   using detail::color;
   using detail::random_double;
   using detail::ray_color;
   using detail::write_color;
   using detail::Camera;
-}
+}  // namespace rtweekend
 
 int main() {
   namespace rt=rtweekend;
@@ -181,11 +210,14 @@ int main() {
   constexpr int samples_per_pixel = 100;
   constexpr int max_child_rays = 15;
 
+  // Materials
+  rt::Lambertian lamb{rt::color{0.5, 0.5, 0.5}};
+  
   // World of spheres
   rt::world_t world{};
   world.reserve(10);
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,0,-1}, 0.5, lamb));
+  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-100.5,-1}, 100, lamb));
 
   // Render
 
