@@ -78,7 +78,7 @@ namespace rtweekend::detail {
     Hittable& operator=(Hittable&&) = delete;
     virtual ~Hittable() = default;
 
-    const Material& material;
+    std::reference_wrapper<const Material> material;
   };
 
   struct HitRecord {
@@ -124,7 +124,7 @@ namespace rtweekend::detail {
 
       // normal = glm::faceforward(normal, r.direction, normal);
       normal = glm::dot(r.direction, normal) < 0?normal:-normal;
-      return HitRecord{hitpoint, normal, root, std::ref(*this)};
+      return HitRecord{hitpoint, normal, root, *this};
     }
   };
 
