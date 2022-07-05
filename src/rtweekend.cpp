@@ -303,7 +303,7 @@ namespace rtweekend {
   using detail::Camera;
 }  // namespace rtweekend
 
-int main() {
+int main(int argc, char* argv[]) {
   namespace rt=rtweekend;
   constexpr double aspect_ratio = 3.0/2.0;
 
@@ -317,11 +317,12 @@ int main() {
                  10.0
                  };
 
+  bool quick = argc>=2 && std::string{argv[1]} == "-q"; // NOLINT
   // Image
-  constexpr int image_width = 1200;
-  constexpr int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
-  constexpr int samples_per_pixel = 100;
-  constexpr int max_child_rays = 50;
+  int image_width = quick?200:1200;
+  int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
+  int samples_per_pixel = quick?15:100;
+  int max_child_rays = quick?5:50;
 
   // World of spheres
   rt::world_t world{};
