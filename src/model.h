@@ -247,3 +247,7 @@ namespace rtweekend {
   using detail::random_vec3;
   using detail::Camera;
 }  // namespace rtweekend
+
+// Local Variables:
+// mode: c++
+// End:

@@ -60,3 +60,7 @@ namespace rtweekend::detail {
     return o << "{" << x.x << "," << x.y << "," << x.z << "}";
   }
 }  // namespace rtweekend::detail
+
+// Local Variables:
+// mode: c++
+// End:
