@@ -34,14 +34,13 @@ int main(int argc, char* argv[]) {
   int max_child_rays = quick?5:50;
 
   // World of spheres
-  rt::world_t world{};
+  rt::World world{};
 
     // Materials
   rt::Lambertian ground_material{rt::color{0.5, 0.5, 0.5}};
-  world.push_back(std::make_unique<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material));
+  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
 
   std::vector<std::unique_ptr<rt::Material>> materials{};
-
 
   for (int a = -11; a < 11; a++) {
     for (int b = -11; b < 11; b++) {
@@ -53,18 +52,16 @@ int main(int argc, char* argv[]) {
           // diffuse
           auto albedo = rt::random_vec3() * rt::random_vec3();
           materials.push_back(std::make_unique<rt::Lambertian>(albedo));
-          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
         } else if (choose_mat < 0.95) {
           // metal
           auto albedo = rt::random_vec3(0.5, 1);
           auto fuzz = rt::random_double(0, 0.5);
           materials.push_back(std::make_unique<rt::Metal>(albedo, fuzz));
-          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
         } else {
           // glass
           materials.push_back(std::make_unique<rt::Dielectric>(1.5));
-          world.push_back(std::make_unique<rt::Sphere>(center, 0.2, *materials.back()));
         }
+        world.add<rt::Sphere>(center, 0.2, *materials.back());
       }
     }
   }
@@ -73,9 +70,9 @@ int main(int argc, char* argv[]) {
   rt::Lambertian reddish{rt::color{0.4, 0.2, 0.1}};
   rt::Metal reddish_metal{rt::color{0.7, 0.6, 0.5}};
 
-  world.push_back(std::make_unique<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish));
-  world.push_back(std::make_unique<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal));
+  world.add<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass);
+  world.add<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish);
+  world.add<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal);
 
 
   // Render
