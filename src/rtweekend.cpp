@@ -71,7 +71,7 @@ namespace rtweekend::detail {
     vec3 at(double t) const {return origin + direction * t;}
   };
 
-  struct HitRecord;
+  struct Hit;
 
   struct ScatterRecord {
     Ray r;
@@ -80,27 +80,27 @@ namespace rtweekend::detail {
 
   struct Material { // NOLINT
     [[nodiscard]] virtual std::optional<ScatterRecord>
-    scatter(const Ray& r_in, const HitRecord& rec) const = 0;
+    scatter(const Ray& r_in, const Hit& rec) const = 0;
 
     virtual ~Material() = default;
   };
 
-  struct Hittable { // NOLINT
-    [[nodiscard]] virtual std::optional<HitRecord>
+  struct Primitive { // NOLINT
+    [[nodiscard]] virtual std::optional<Hit>
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
-    explicit Hittable(const Material& m) : material_{&m} {};
-    virtual ~Hittable() = default;
+    explicit Primitive(const Material& m) : material_{&m} {};
+    virtual ~Primitive() = default;
     const Material& material() const {return *material_;}
   private:
     const Material* material_;
   };
 
-  struct HitRecord {
+  struct Hit {
     point p;
     vec3 normal;
     double t;
-    const Hittable* hittable;
+    const Primitive* hittable;
     bool front_facing;
   };
 
@@ -108,7 +108,7 @@ namespace rtweekend::detail {
     explicit Lambertian(const color& albedo) : albedo{albedo} {}
 
     std::optional<ScatterRecord>
-    scatter(const Ray&, const HitRecord& rec) const override {
+    scatter(const Ray&, const Hit& rec) const override {
       auto rand = random_unit_vector();
       if (glm::all(glm::epsilonEqual(rec.normal, rand, 1e-8))) {
         return {};
@@ -125,7 +125,7 @@ namespace rtweekend::detail {
       : albedo{albedo}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
 
     std::optional<ScatterRecord>
-    scatter(const Ray& r, const HitRecord& rec) const override {
+    scatter(const Ray& r, const Hit& rec) const override {
       auto reflected = glm::reflect(r.direction, rec.normal);
 
       return ScatterRecord{.r = Ray{rec.p, reflected + fuzz*random_unit_vector()},
@@ -141,7 +141,7 @@ namespace rtweekend::detail {
       : ir{index_of_refraction}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
 
     std::optional<ScatterRecord>
-    scatter(const Ray& r, const HitRecord& rec) const override {
+    scatter(const Ray& r, const Hit& rec) const override {
 
       auto unit_direction = glm::normalize(r.direction);
 
@@ -175,12 +175,12 @@ namespace rtweekend::detail {
     }
   };
 
-  struct Sphere : public Hittable {
+  struct Sphere : public Primitive {
     point center;
     double radius;
-    Sphere(point c, double r, const Material& m) : Hittable{m}, center{c}, radius{r} {};
+    Sphere(point c, double r, const Material& m) : Primitive{m}, center{c}, radius{r} {};
 
-    [[nodiscard]] std::optional<HitRecord>
+    [[nodiscard]] std::optional<Hit>
     hit(const Ray& r, double tmin, double tmax) const override {
       vec3 oc = r.origin - center;                      // (A-C)
       double a = glm::dot(r.direction, r.direction);    // (b.b)
@@ -201,7 +201,7 @@ namespace rtweekend::detail {
 
       bool front_facing = (glm::dot(r.direction, normal) < 0) ^ (radius < 0);
       normal = front_facing?normal:-normal;
-      return HitRecord{hitpoint, normal, root, this, front_facing};
+      return Hit{hitpoint, normal, root, this, front_facing};
     }
   };
 
@@ -254,10 +254,10 @@ namespace rtweekend::detail {
     double lens_radius_;
   };
 
-  using world_t = std::vector<std::unique_ptr<Hittable>>;
+  using world_t = std::vector<std::unique_ptr<Primitive>>;
 
   color ray_color(const Ray& r, const world_t& world, size_t max_depth=20) {
-    std::optional<HitRecord> closest{};
+    std::optional<Hit> closest{};
     double tmax = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
       auto probe = h->hit(r, 0.001, tmax);
@@ -389,5 +389,5 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  std::cerr << "\nDone (also " << sizeof(rt::detail::HitRecord) << ").\n";
+  std::cerr << "\nDone (also " << sizeof(rt::detail::Hit) << ").\n";
 }
