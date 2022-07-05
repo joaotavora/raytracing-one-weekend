@@ -36,32 +36,33 @@ int main(int argc, char* argv[]) {
   // World of spheres
   rt::World world{};
 
-    // Materials
-  rt::Lambertian ground_material{rt::color{0.5, 0.5, 0.5}};
-  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
+  // A boutique of materials
+  rt::Boutique boutique{};
 
-  std::vector<std::unique_ptr<rt::Material>> materials{};
+  auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
+  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
 
   for (int a = -11; a < 11; a++) {
     for (int b = -11; b < 11; b++) {
       auto choose_mat = rt::random_double();
       rt::point center(a+ 0.9*rt::random_double(), 0.2, b + 0.9*rt::random_double());
 
+      rt::Material* mat{};
       if (glm::length(center - rt::point{4,0.2,0}) > 0.9) {
         if (choose_mat < 0.8) {
           // diffuse
           auto albedo = rt::random_vec3() * rt::random_vec3();
-          materials.push_back(std::make_unique<rt::Lambertian>(albedo));
+          mat = &boutique.add<rt::Lambertian>(albedo);
         } else if (choose_mat < 0.95) {
           // metal
           auto albedo = rt::random_vec3(0.5, 1);
           auto fuzz = rt::random_double(0, 0.5);
-          materials.push_back(std::make_unique<rt::Metal>(albedo, fuzz));
+          mat = &boutique.add<rt::Metal>(albedo, fuzz);
         } else {
           // glass
-          materials.push_back(std::make_unique<rt::Dielectric>(1.5));
+          mat = &boutique.add<rt::Dielectric>(1.5);
         }
-        world.add<rt::Sphere>(center, 0.2, *materials.back());
+        world.add<rt::Sphere>(center, 0.2, *mat);
       }
     }
   }

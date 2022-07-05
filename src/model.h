@@ -199,17 +199,22 @@ namespace rtweekend::detail {
     double lens_radius_;
   };
 
-  class World {
-    std::vector<std::unique_ptr<Primitive>> vp_;
+  template <typename Base>
+  class Store {
+    std::vector<std::unique_ptr<Base>> items_;
   public:
-    template <typename T, typename ...Args>
-    void add(Args&& ...args) {
-      vp_.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+    template <typename Derived, typename ...Args>
+    Derived& add(Args&& ...args) {
+      items_.push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
+      return static_cast<Derived&>(*items_.back());
     }
 
-    [[nodiscard]] auto begin() const {return vp_.begin();}
-    [[nodiscard]] auto end() const {return vp_.end();}
+    [[nodiscard]] auto begin() const {return items_.begin();}
+    [[nodiscard]] auto end() const {return items_.end();}
   };
+
+  using World = Store<Primitive>;
+  using Boutique = Store<Material>;
 
   color ray_color(const Ray& r, const World& world, size_t max_depth=20) {
     std::optional<Hit> closest{};
@@ -243,6 +248,7 @@ namespace rtweekend::detail {
 
 namespace rtweekend {
   using detail::World;
+  using detail::Boutique;
   using detail::Sphere;
   using detail::Material;
   using detail::Lambertian;
