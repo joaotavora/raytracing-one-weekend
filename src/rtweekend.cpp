@@ -1,12 +1,9 @@
-#include <cmath>
+#include <chrono>
 #include <iostream>
 #include <glm/glm.hpp>
-#include <glm/gtc/epsilon.hpp>
-#include <glm/exponential.hpp>
-#include <glm/geometric.hpp>
 #include <functional>
-#include <limits>
 #include <random>
+#include <future>
 
 #include "utils.h"
 #include "model.h"
@@ -24,14 +21,14 @@ int main(int argc, char* argv[]) {
                  aspect_ratio,
                  0.1,
                  10.0
-                 };
+  };
 
   bool quick = argc>=2 && std::string{argv[1]} == "-q"; // NOLINT
   // Image
-  int image_width = quick?200:1200;
+  int image_width = quick?300:1200;
   int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
-  int samples_per_pixel = quick?15:100;
-  int max_child_rays = quick?5:50;
+  int samples_per_pixel = quick?40:100;
+  int max_child_rays = quick?15:50;
 
   // World of spheres
   rt::World world{};
@@ -77,31 +74,56 @@ int main(int argc, char* argv[]) {
 
 
   // Render
-  std::vector<std::vector<rt::color>> lines(image_height,
-                                            std::vector(image_width, rt::color{0,0,0}));
-  std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+  int nthreads = 4;
+  namespace khr = std::chrono;
+  std::cerr << "Started rendering with " << nthreads << " threads\n";
+  khr::time_point start{khr::high_resolution_clock::now()};
 
-  for (int i = 0; i < image_height; ++i) {
-    auto reflect_i = image_height - i -1;
-    std::cerr << "\rScanlines remaining: "
-              << reflect_i << ' ' << std::flush;
-    for (int j = 0; j < image_width; ++j) {
-      rt::color pixel_color{0,0,0};
-      for (int s = 0; s < samples_per_pixel; ++s) {
-        auto u = (j + rt::random_double()) / (image_width-1);
-        auto v = (reflect_i + rt::random_double()) / (image_height-1);
-        auto r = cam.get_ray(u, v);
-        pixel_color += rt::ray_color(r, world, max_child_rays);
+  using Image = std::vector<rt::color>;
+  Image global_image(image_width * image_height, rt::color{0,0,0});
+
+  auto do_work = [&](int samples) {
+    Image local_image(image_width * image_height, rt::color{0,0,0});
+    for (int i = 0; i < image_height; ++i) {
+      auto from_top_i = image_height - i -1;
+      std::cerr << "\rScanlines remaining: "
+                << from_top_i << ' ' << std::flush;
+      for (int j = 0; j < image_width; ++j) {
+        rt::color pixel_color{0,0,0};
+        for (int s = 0; s < samples; ++s) {
+          auto u = (j + rt::random_double()) / (image_width-1);
+          auto v = (from_top_i + rt::random_double()) / (image_height-1);
+          auto r = cam.get_ray(u, v);
+          pixel_color += rt::ray_color(r, world, max_child_rays);
+        }
+        local_image[i*image_width + j] = pixel_color;
       }
-      lines[i][j] = pixel_color;
     }
+    return local_image;
+  };
+
+  std::vector<std::future<Image>> work{};
+  work.reserve(nthreads);
+
+  for (int i = 0; i < nthreads; ++i) {
+    work.push_back(std::async(std::launch::async,
+                              do_work,
+                              samples_per_pixel/nthreads));
   }
-  for (const auto& line : lines) {
-    for (const auto& c : line) {
-      rt::write_color(std::cout, c, samples_per_pixel);
-    }
+  for (auto& f : work) {
+    const auto& done = f.get();
+    std::transform(done.cbegin(), done.cend(),
+                   global_image.cbegin(), global_image.begin(),
+                   std::plus<rt::color>());
   }
 
+  std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+  for (const auto& c : global_image) {
+    rt::write_color(std::cout, c, samples_per_pixel/nthreads * nthreads);
+  }
 
-  std::cerr << "\nDone (also " << sizeof(rt::detail::Hit) << ").\n";
+  auto took = khr::high_resolution_clock::now() - start;
+  std::cerr << "\nDone in "
+            << khr::duration_cast<khr::milliseconds>(took) << "\n";
+
 }
