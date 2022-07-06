@@ -1,6 +1,6 @@
 #include <random>
 
-#include "utils.h"
+#include "random_utils.h"
 #include "model.h"
 #include "render.h"
 
@@ -52,8 +52,8 @@ int main(int argc, char* argv[]) {
   rt::Config cfg{};
   bool quick = argc>=2 && std::string{argv[1]} == "-q"; // NOLINT
   if (quick) {
-    cfg.image_width = 300;
-    cfg.samples_per_pixel = 40;
+    cfg.image_width = 200;
+    cfg.samples_per_pixel = 20;
     cfg.max_child_rays = 20;
   }
   // Camera
