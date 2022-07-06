@@ -8,33 +8,25 @@
 #include "utils.h"
 #include "model.h"
 
+struct Config {
+  double aspect_ratio = 3.0/2.0;
+  int image_width = 1200;
+  int samples_per_pixel = 100;
+  int max_child_rays = 50;
+  int nthreads = 4;
+}; // NOLINT
 
-int main(int argc, char* argv[]) {
-  namespace rt=rtweekend;
-  constexpr double aspect_ratio = 3.0/2.0;
+namespace rt=rtweekend;
 
-  // Camera
-  rt::Camera cam{rt::point(13,2,3),
-                 rt::point(0,0,0),
-                 rt::vec3(0,1,0),
-                 20.0,
-                 aspect_ratio,
-                 0.1,
-                 10.0
-  };
-
-  bool quick = argc>=2 && std::string{argv[1]} == "-q"; // NOLINT
-  // Image
-  int image_width = quick?300:1200;
-  int image_height = static_cast<int>(image_width/aspect_ratio); // NOLINT
-  int samples_per_pixel = quick?40:100;
-  int max_child_rays = quick?15:50;
-
-  // World of spheres
+struct Scene {
   rt::World world{};
-
-  // A boutique of materials
   rt::Boutique boutique{};
+};
+
+Scene scene() {
+  Scene scn{};
+  auto& world = scn.world;
+  auto& boutique = scn.boutique;
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
   world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
@@ -64,51 +56,54 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  rt::Dielectric glass{1.5};
-  rt::Lambertian reddish{rt::color{0.4, 0.2, 0.1}};
-  rt::Metal reddish_metal{rt::color{0.7, 0.6, 0.5}};
+  auto& glass = boutique.add<rt::Dielectric>(1.5);
+  auto& reddish = boutique.add<rt::Lambertian>(rt::color{0.4, 0.2, 0.1});
+  auto& reddish_metal = boutique.add<rt::Metal>(rt::color{0.7, 0.6, 0.5});
 
   world.add<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass);
   world.add<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish);
   world.add<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal);
+  return scn;
+}
 
+void render(const Scene& scn, const rt::Camera& cam, const Config& cfg) {
+  const auto& world = scn.world;
+  int image_height = static_cast<int>(cfg.image_width/cfg.aspect_ratio); // NOLINT
 
-  // Render
-  int nthreads = 4;
   namespace khr = std::chrono;
-  std::cerr << "Started rendering with " << nthreads << " threads\n";
+  std::cerr << "Started rendering with " << cfg.nthreads << " threads\n";
   khr::time_point start{khr::high_resolution_clock::now()};
 
   using Image = std::vector<rt::color>;
-  Image global_image(image_width * image_height, rt::color{0,0,0});
+  Image global_image(cfg.image_width * image_height, rt::color{0,0,0});
 
   auto do_work = [&](int samples) {
-    Image local_image(image_width * image_height, rt::color{0,0,0});
+    Image local_image(cfg.image_width * image_height, rt::color{0,0,0});
     for (int i = 0; i < image_height; ++i) {
       auto from_top_i = image_height - i -1;
       std::cerr << "\rScanlines remaining: "
                 << from_top_i << ' ' << std::flush;
-      for (int j = 0; j < image_width; ++j) {
+      for (int j = 0; j < cfg.image_width; ++j) {
         rt::color pixel_color{0,0,0};
         for (int s = 0; s < samples; ++s) {
-          auto u = (j + rt::random_double()) / (image_width-1);
+          auto u = (j + rt::random_double()) / (cfg.image_width-1);
           auto v = (from_top_i + rt::random_double()) / (image_height-1);
           auto r = cam.get_ray(u, v);
-          pixel_color += rt::ray_color(r, world, max_child_rays);
+          pixel_color += rt::ray_color(r, world, cfg.max_child_rays);
         }
-        local_image[i*image_width + j] = pixel_color;
+        local_image[i*cfg.image_width + j] = pixel_color;
       }
     }
     return local_image;
   };
 
   std::vector<std::future<Image>> work{};
-  work.reserve(nthreads);
+  work.reserve(cfg.nthreads);
 
-  for (int i = 0; i < nthreads; ++i) {
+  for (int i = 0; i < cfg.nthreads; ++i) {
     work.push_back(std::async(std::launch::async,
                               do_work,
-                              samples_per_pixel/nthreads));
+                              cfg.samples_per_pixel/cfg.nthreads));
   }
   for (auto& f : work) {
     const auto& done = f.get();
@@ -117,13 +112,33 @@ int main(int argc, char* argv[]) {
                    std::plus<rt::color>());
   }
 
-  std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+  std::cout << "P3\n" << cfg.image_width << ' ' << image_height << "\n255\n";
   for (const auto& c : global_image) {
-    rt::write_color(std::cout, c, samples_per_pixel/nthreads * nthreads);
+    rt::write_color(std::cout, c,
+                    cfg.samples_per_pixel/cfg.nthreads * cfg.nthreads);
   }
 
   auto took = khr::high_resolution_clock::now() - start;
   std::cerr << "\nDone in "
             << khr::duration_cast<khr::milliseconds>(took) << "\n";
+}
 
+int main(int argc, char* argv[]) {
+  Config cfg{};
+  bool quick = argc>=2 && std::string{argv[1]} == "-q"; // NOLINT
+  if (quick) {
+    cfg.image_width = 300;
+    cfg.samples_per_pixel = 48;
+    cfg.max_child_rays = 25;
+  }
+  // Camera
+  rt::Camera cam{rt::point(13,2,3),
+                 rt::point(0,0,0),
+                 rt::vec3(0,1,0),
+                 20.0,
+                 cfg.aspect_ratio,
+                 0.1,
+                 10.0};
+
+  render(scene(), cam, cfg);
 }
