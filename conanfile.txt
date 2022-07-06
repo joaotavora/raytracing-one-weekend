@@ -1,6 +1,7 @@
 [requires]
 glm/cci.20220420
 stb/cci.20210910
+cli11/2.2.0
 
 [generators]
 cmake
