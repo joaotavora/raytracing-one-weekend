@@ -77,24 +77,31 @@ int main(int argc, char* argv[]) {
 
 
   // Render
-
+  std::vector<std::vector<rt::color>> lines(image_height,
+                                            std::vector(image_width, rt::color{0,0,0}));
   std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
-  for (int j = image_height-1; j >= 0; --j) {
-    std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
-    for (int i = 0; i < image_width; ++i) {
+  for (int i = 0; i < image_height; ++i) {
+    auto reflect_i = image_height - i -1;
+    std::cerr << "\rScanlines remaining: "
+              << reflect_i << ' ' << std::flush;
+    for (int j = 0; j < image_width; ++j) {
       rt::color pixel_color{0,0,0};
       for (int s = 0; s < samples_per_pixel; ++s) {
-        auto u = (i + rt::random_double()) / (image_width-1);   // sweep [0 -> 1]
-        auto v = (j + rt::random_double()) / (image_height-1);  // sweep [1 -> 0]
+        auto u = (j + rt::random_double()) / (image_width-1);
+        auto v = (reflect_i + rt::random_double()) / (image_height-1);
         auto r = cam.get_ray(u, v);
         pixel_color += rt::ray_color(r, world, max_child_rays);
       }
-      rt::write_color(std::cout, pixel_color, samples_per_pixel);
-
-
+      lines[i][j] = pixel_color;
     }
   }
+  for (const auto& line : lines) {
+    for (const auto& c : line) {
+      rt::write_color(std::cout, c, samples_per_pixel);
+    }
+  }
+
 
   std::cerr << "\nDone (also " << sizeof(rt::detail::Hit) << ").\n";
 }
