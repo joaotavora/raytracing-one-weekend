@@ -231,8 +231,9 @@ namespace rtweekend::detail {
     [[nodiscard]] auto end() const {return items_.end();}
   };
 
-  using World = Store<Primitive>;
-  using Boutique = Store<Material>;
+  struct World : public Store<Primitive> {
+    Store<Material> boutique;
+  };
 
   color ray_color(const Ray& ray, const World& world, size_t max_depth=20) {
     std::optional<Hit> hit{};
@@ -266,7 +267,6 @@ namespace rtweekend::detail {
 
 namespace rtweekend {
   using detail::World;
-  using detail::Boutique;
   using detail::Sphere;
   using detail::Material;
   using detail::Lambertian;
