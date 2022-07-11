@@ -111,15 +111,48 @@ namespace rtweekend::detail {
   class Sphere : public Primitive {
   public:
     Sphere(point center, double radius, const Material& material)
-      : Primitive{material}, center_{center}, radius_{radius} {};
+      : Primitive{material}, center_{center}, radius_{radius} {}
+
+    [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
+    double tmax) const override;
+
+    const point& center() const {
+      return center_;
+    }
+
+    [[nodiscard]] const double& radius() const {return radius_;}
+    private:
+    point center_;
+    double radius_;
+  };
+
+  class MovingSphere : public Primitive {
+  public:
+    MovingSphere(point c0, point c1, time_t t0, time_t t1, double radius,
+                 const Material& material)
+      : Primitive{material}, center0_{c0}, center1_{c1},
+        t0_{t0}, t1_{t1}, radius_{radius} {};
 
     [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
                                          double tmax) const override;
 
-    [[nodiscard]] const point& center() const {return center_;}
+    const point& center() const {
+      return center0_;
+    }
+
+    [[nodiscard]]
+    point center(time_t time) const {
+      (void) time;
+      (void) t0_;
+      (void) t1_;
+      (void) center1_;
+      return (t0_ == t1_)?
+        center0_:center0_ + ((time - t0_) / (t1_ - t0_))*(center1_ - center0_);
+    }
     [[nodiscard]] const double& radius() const {return radius_;}
   private:
-    point center_;
+    point center0_, center1_;
+    time_t t0_, t1_;
     double radius_;
   };
 
@@ -171,6 +204,7 @@ namespace rtweekend::detail {
 namespace rtweekend {
   using detail::World;
   using detail::Sphere;
+  using detail::MovingSphere;
   using detail::Material;
   using detail::Lambertian;
   using detail::Metal;

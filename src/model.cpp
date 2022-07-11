@@ -33,14 +33,14 @@ namespace rtweekend::detail {
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 
-  std::optional<ScatterRecord> Lambertian::scatter(const Ray &,
+  std::optional<ScatterRecord> Lambertian::scatter(const Ray &r,
                                                    const Hit &hit) const {
     auto rand = random_unit_vector();
     if (glm::all(glm::epsilonEqual(hit.normal(), rand, 1e-8))) {
       return {};
     }
     auto scatter_direction = hit.normal() + rand;
-    return ScatterRecord{.r = Ray{hit.where(), scatter_direction},
+    return ScatterRecord{.r = Ray{hit.where(), scatter_direction, r.time()},
                          .attenuation = albedo};
   }
 
@@ -49,14 +49,14 @@ namespace rtweekend::detail {
     auto reflected = glm::reflect(r.direction(), hit.normal());
 
     return ScatterRecord{
-      .r = Ray{hit.where(), reflected + fuzz * random_unit_vector()},
+      .r = Ray{hit.where(), reflected + fuzz * random_unit_vector(), r.time()},
       .attenuation = albedo};
   }
 
-  std::optional<ScatterRecord> Dielectric::scatter(const Ray &ray,
+  std::optional<ScatterRecord> Dielectric::scatter(const Ray &r,
                                                    const Hit &rec) const {
 
-    auto unit_direction = glm::normalize(ray.direction());
+    auto unit_direction = glm::normalize(r.direction());
 
     double cos_theta = dot(-unit_direction, rec.normal());
     double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
@@ -73,33 +73,47 @@ namespace rtweekend::detail {
       direction = glm::refract(unit_direction, rec.normal(), refraction_ratio);
 
     return ScatterRecord{
-      .r = Ray{rec.where(), direction + fuzz * random_unit_vector()},
+      .r = Ray{rec.where(), direction + fuzz * random_unit_vector(), r.time()},
       .attenuation = {1.0, 1.0, 1.0}};
   }
 
-  std::optional<Hit> Sphere::hit(const Ray &r, double tmin, double tmax) const {
-    vec3 oc = r.origin() - center();                     // (A-C)
+  inline std::optional<Hit> sphere_hit_helper(const Ray &r,
+                                       double tmin,
+                                       double tmax,
+                                       const point& center,
+                                       double radius,
+                                       const Primitive& hit) {
+    vec3 oc = r.origin() - center;                     // (A-C)
     double a = glm::dot(r.direction(), r.direction()); // (b.b)
     auto h = glm::dot(oc, r.direction());              // (A-C).b
-    auto c = glm::dot(oc, oc) - radius() * radius();       // (A-C)(A-C) - r^2
+    auto c = glm::dot(oc, oc) - radius * radius;       // (A-C)(A-C) - r^2
     auto discriminant = h * h - a * c;
     if (discriminant < 0.0)
       return {};
 
     auto root = (-h - std::sqrt(discriminant)) / a;
     if (root < tmin || root > tmax) {
-
       root = (-h + std::sqrt(discriminant)) / a;
       if (root < tmin || root > tmax)
         return {};
     }
 
     auto hitpoint = r.at(root);
-    auto normal = glm::normalize(hitpoint - center());
+    auto normal = glm::normalize(hitpoint - center);
 
-    bool front_facing = (glm::dot(r.direction(), normal) < 0) ^ (radius() < 0);
+    bool front_facing = (glm::dot(r.direction(), normal) < 0) ^ (radius < 0);
     normal = front_facing ? normal : -normal;
-    return Hit{*this, hitpoint, root, normal, front_facing};
+    return Hit{hit, hitpoint, root, normal, front_facing};
+  }
+
+  std::optional<Hit>
+  Sphere::hit(const Ray &r, double tmin, double tmax) const {
+    return sphere_hit_helper(r, tmin, tmax, center(), radius(), *this);
+  }
+
+  std::optional<Hit>
+  MovingSphere::hit(const Ray &r, double tmin, double tmax) const {
+    return sphere_hit_helper(r, tmin, tmax, center(r.time()), radius(), *this);
   }
 
   Camera::Camera(point lookfrom, point lookat, vec3 vup, double fov,
