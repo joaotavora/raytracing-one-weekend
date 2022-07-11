@@ -27,17 +27,20 @@ rt::World lots_of_balls() {
         if (choose_mat < 0.8) {
           // diffuse
           auto albedo = rt::random_vec3() * rt::random_vec3();
+          auto center2 = center + rt::point(0, rt::random_double(0,.5), 0);
           mat = &boutique.add<rt::Lambertian>(albedo);
+          world.add<rt::MovingSphere>(center, center2, 0.0, 1.0, 0.2, *mat);
         } else if (choose_mat < 0.95) {
           // metal
           auto albedo = rt::random_vec3(0.5, 1);
           auto fuzz = rt::random_double(0, 0.5);
           mat = &boutique.add<rt::Metal>(albedo, fuzz);
+          world.add<rt::Sphere>(center, 0.2, *mat);
         } else {
           // glass
           mat = &boutique.add<rt::Dielectric>(1.5);
+          world.add<rt::Sphere>(center, 0.2, *mat);
         }
-        world.add<rt::Sphere>(center, 0.2, *mat);
       }
     }
   }
@@ -89,7 +92,9 @@ int main(int argc, char* argv[]) {
                  20.0,
                  cfg.aspect_ratio,
                  0.1,
-                 10.0};
+                 10.0,
+                 0,
+                 1};
 
   rt::render(lots_of_balls(), cam, cfg);
 }
