@@ -146,8 +146,7 @@ namespace rtweekend::detail {
       (void) t0_;
       (void) t1_;
       (void) center1_;
-      return (t0_ == t1_)?
-        center0_:center0_ + ((time - t0_) / (t1_ - t0_))*(center1_ - center0_);
+      return center0_ + ((time - t0_) / (t1_ - t0_))*(center1_ - center0_);
     }
     [[nodiscard]] const double& radius() const {return radius_;}
   private:
