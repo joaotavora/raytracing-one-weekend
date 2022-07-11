@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model.h"
+#include <iosfwd>
 
 namespace rtweekend {
   struct Config {
@@ -11,6 +12,8 @@ namespace rtweekend {
     int nthreads = 4;
   };
   void render(const World &world, const Camera &cam, const Config &cfg);
+
+  std::ostream& operator<<(std::ostream& o, const Config& c);
 } // namespace rtweekend
 
 // Local Variables:

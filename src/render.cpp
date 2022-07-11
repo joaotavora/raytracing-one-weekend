@@ -72,4 +72,14 @@ namespace rtweekend {
               << "\n";
   }
 
+  std::ostream& operator<<(std::ostream& o, const Config& c) {
+    return o << "Config {\n"
+             << "aspect_ratio: "      << c.aspect_ratio << "\n"
+             << "image_width: "       << c.image_width << "\n"
+             << "samples_per_pixel: " << c.samples_per_pixel << "\n"
+             << "max_child_rays: "    << c.max_child_rays << "\n"
+             << "nthreads: "          << c.nthreads << "\n"
+             << "}\n";
+    }
+
 }  // namespace rtweekend
