@@ -104,10 +104,12 @@ namespace rtweekend::detail {
 
   Camera::Camera(point lookfrom, point lookat, vec3 vup, double fov,
                  double aspect_ratio, double aperture,
-                 std::optional<double> focus_dist)
+                 std::optional<double> focus_dist, time_t t0, time_t t1)
     : origin_{lookfrom}, w_{glm::normalize(lookfrom - lookat)},
       u_{glm::normalize(glm::cross(vup, w_))},
-      v_{glm::normalize(glm::cross(w_, u_))}, lens_radius_{aperture / 2} {
+      v_{glm::normalize(glm::cross(w_, u_))},
+      lens_radius_{aperture / 2},
+      t0_{t0}, t1_{t1} {
 
     auto viewport_height = 2.0 * std::tan(fov * std::numbers::pi / 180 / 2);
     auto viewport_width = aspect_ratio * viewport_height;
@@ -123,7 +125,13 @@ namespace rtweekend::detail {
   Ray Camera::get_ray(double s, double t) const {
     vec3 rd = lens_radius_ * random_in_unit_disk();
     vec3 offset = u_ * rd.x + v_ * rd.y;
-    return Ray{origin_ + offset, lower_left_corner_ + s * horizontal_ +
-               t * vertical_ - origin_ - offset};
+
+    auto from = origin_ + offset;
+    auto direction = lower_left_corner_ +
+      s * horizontal_ +
+      t * vertical_
+      - from;
+    auto when = random_double(t0_, t1_);
+    return Ray{from, direction, when};
   }
 } // namespace rtweekend::detail

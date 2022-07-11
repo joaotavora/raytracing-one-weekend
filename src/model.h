@@ -8,15 +8,22 @@
 #include "vec3.h"
 
 namespace rtweekend::detail {
+  using time_t = double;
+
   class Ray {
   public:
-    Ray(point origin, vec3 direction) : origin_{origin}, direction_{direction} {}
+    Ray(point origin, vec3 direction, time_t time = 0.0) :
+      origin_{origin},
+      direction_{direction},
+      time_{time}{}
     vec3 at(double t) const {return origin_ + direction_ * t;}
-    [[nodiscard]] const point& origin() const {return origin_;}
-    [[nodiscard]] const vec3& direction() const {return direction_;}
+    [[nodiscard]] const point&  origin()    const {return origin_;}
+    [[nodiscard]] const vec3&   direction() const {return direction_;}
+    [[nodiscard]] const time_t& time()      const {return time_;}
   private:
     vec3 origin_;
     vec3 direction_;
+    time_t time_;
   };
 
   class Hit;
@@ -115,7 +122,8 @@ namespace rtweekend::detail {
     static constexpr auto focal_length = 1.0;
     Camera(point lookfrom, point lookat, vec3 vup, double fov,
            double aspect_ratio, double aperture,
-           std::optional<double> focus_dist = std::nullopt);
+           std::optional<double> focus_dist = std::nullopt,
+           time_t t0 = 0, time_t t1 = 0);
 
     Ray get_ray(double s, double t) const;
 
@@ -129,6 +137,7 @@ namespace rtweekend::detail {
     vec3 vertical_{};
     point lower_left_corner_{};
     double lens_radius_;
+    double t0_, t1_;
   };
 
   template <typename Base>
