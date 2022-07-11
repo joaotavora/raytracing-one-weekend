@@ -4,9 +4,10 @@ set(CMAKE_CXX_STANDARD 20)
 
 # This will come in handy for LSP servers such as clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 # Decent compile options
-add_compile_options(-Wall -Wextra -Werror -pedantic)
+add_compile_options(-Wall -Wextra -Werror -pedantic -g)
 
 # Conan is important
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
