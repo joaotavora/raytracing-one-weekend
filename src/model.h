@@ -20,7 +20,7 @@ namespace rtweekend::detail {
     [[nodiscard]] const point&  origin()    const {return origin_;}
     [[nodiscard]] const vec3&   direction() const {return direction_;}
     [[nodiscard]] const time_t& time()      const {return time_;}
-  private:
+    private:
     vec3 origin_;
     vec3 direction_;
     time_t time_;
@@ -49,7 +49,7 @@ namespace rtweekend::detail {
 
     virtual ~Primitive() = default;
     [[nodiscard]] const Material& material() const {return *material_;}
-  private:
+    private:
     const Material* material_;
   };
 
@@ -70,7 +70,7 @@ namespace rtweekend::detail {
     [[nodiscard]] const vec3& normal() const noexcept {return normal_;}
     [[nodiscard]] double at() const noexcept {return at_;}
     [[nodiscard]] bool front_facing() const noexcept {return front_facing_;}
-  };
+    };
 
   struct Lambertian : public Material {
     explicit Lambertian(const color& albedo) : albedo{albedo} {}
@@ -134,7 +134,7 @@ namespace rtweekend::detail {
         t0_{t0}, t1_{t1}, radius_{radius} {};
 
     [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
-                                         double tmax) const override;
+    double tmax) const override;
 
     const point& center() const {
       return center0_;
@@ -149,10 +149,38 @@ namespace rtweekend::detail {
       return center0_ + ((time - t0_) / (t1_ - t0_))*(center1_ - center0_);
     }
     [[nodiscard]] const double& radius() const {return radius_;}
-  private:
+    private:
     point center0_, center1_;
     time_t t0_, t1_;
     double radius_;
+  };
+
+  class Aabb {
+  public:
+    Aabb() {}
+    Aabb(const point& a, const point& b)
+      : min_{a}, max_{b} {}
+
+    const point& min() const {return min_; }
+    const point& max() const {return max_; }
+
+    bool hit(const Ray& r, double t_min, double t_max) const {
+      for (int a = 0; a < 3; a++) {
+        auto inv_direction = 1.0F / r.direction()[a];
+        auto t0 = (min()[a] - r.origin()[a]) * inv_direction;
+        auto t1 = (max()[a] - r.origin()[a]) * inv_direction;
+        if (inv_direction < 0.0F)
+          std::swap(t0, t1);
+        t_min = t0 > t_min ? t0 : t_min;
+        t_max = t1 < t_max ? t1 : t_max;
+        if (t_max <= t_min)
+          return false;
+      }
+      return true;
+    }
+  private:
+    point min_{};
+    point max_{};
   };
 
   class Camera {
@@ -190,7 +218,7 @@ namespace rtweekend::detail {
 
     [[nodiscard]] auto begin() const {return items_.begin();}
     [[nodiscard]] auto end() const {return items_.end();}
-  };
+    };
 
   struct World : public Store<Primitive> {
     Store<Material> boutique;
