@@ -78,10 +78,10 @@ namespace rtweekend::detail {
   }
 
   std::optional<Hit> Sphere::hit(const Ray &r, double tmin, double tmax) const {
-    vec3 oc = r.origin() - center;                     // (A-C)
+    vec3 oc = r.origin() - center();                     // (A-C)
     double a = glm::dot(r.direction(), r.direction()); // (b.b)
     auto h = glm::dot(oc, r.direction());              // (A-C).b
-    auto c = glm::dot(oc, oc) - radius * radius;       // (A-C)(A-C) - r^2
+    auto c = glm::dot(oc, oc) - radius() * radius();       // (A-C)(A-C) - r^2
     auto discriminant = h * h - a * c;
     if (discriminant < 0.0)
       return {};
@@ -95,9 +95,9 @@ namespace rtweekend::detail {
     }
 
     auto hitpoint = r.at(root);
-    auto normal = glm::normalize(hitpoint - center);
+    auto normal = glm::normalize(hitpoint - center());
 
-    bool front_facing = (glm::dot(r.direction(), normal) < 0) ^ (radius < 0);
+    bool front_facing = (glm::dot(r.direction(), normal) < 0) ^ (radius() < 0);
     normal = front_facing ? normal : -normal;
     return Hit{*this, hitpoint, root, normal, front_facing};
   }

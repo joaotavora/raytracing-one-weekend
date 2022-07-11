@@ -108,13 +108,19 @@ namespace rtweekend::detail {
     }
   };
 
-  struct Sphere : public Primitive {
-    point center;
-    double radius;
-    Sphere(point c, double r, const Material& m) : Primitive{m}, center{c}, radius{r} {};
+  class Sphere : public Primitive {
+  public:
+    Sphere(point center, double radius, const Material& material)
+      : Primitive{material}, center_{center}, radius_{radius} {};
 
     [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
                                          double tmax) const override;
+
+    [[nodiscard]] const point& center() const {return center_;}
+    [[nodiscard]] const double& radius() const {return radius_;}
+  private:
+    point center_;
+    double radius_;
   };
 
   class Camera {
