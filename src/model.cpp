@@ -148,4 +148,31 @@ namespace rtweekend::detail {
     auto when = random_double(t0_, t1_);
     return Ray{from, direction, when};
   }
+  std::optional<Aabb> Sphere::bounding_box(double time0, double time1) const {
+    (void) time0, void (time1);
+    return Aabb{center_ - vec3(radius_, radius_, radius_),
+                center_ + vec3(radius_, radius_, radius_)};
+  }
+
+  Aabb surrounding_box(Aabb box0, Aabb box1) {
+    point small(fmin(box0.min().x, box1.min().x),
+                fmin(box0.min().y, box1.min().y),
+                fmin(box0.min().z, box1.min().z));
+
+    point big(fmax(box0.max().x, box1.max().x),
+              fmax(box0.max().y, box1.max().y),
+              fmax(box0.max().z, box1.max().z));
+
+    return Aabb(small,big);
+  }
+
+  std::optional<Aabb> MovingSphere::bounding_box(double time0, double time1) const {
+    Aabb box0(
+        center(time0) - vec3(radius_, radius_, radius_),
+        center(time0) + vec3(radius_, radius_, radius_));
+    Aabb box1(
+        center(time1) - vec3(radius_, radius_, radius_),
+        center(time1) + vec3(radius_, radius_, radius_));
+    return surrounding_box(box0, box1);
+}
 } // namespace rtweekend::detail

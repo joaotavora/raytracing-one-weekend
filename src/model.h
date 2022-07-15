@@ -9,6 +9,9 @@
 
 namespace rtweekend::detail {
   using time_t = double;
+ 
+  class Hit;
+  class Aabb;
 
   class Ray {
   public:
@@ -25,8 +28,6 @@ namespace rtweekend::detail {
     vec3 direction_;
     time_t time_;
   };
-
-  class Hit;
 
   struct ScatterRecord {
     Ray r;
@@ -45,6 +46,10 @@ namespace rtweekend::detail {
   public:
     [[nodiscard]] virtual std::optional<Hit>
     hit(const Ray& r, double tmin, double tmax) const = 0;
+
+    [[nodiscard]] virtual std::optional<Aabb>
+    bounding_box(double time0, double time1) const = 0;
+
     explicit Primitive(const Material& m) : material_{&m} {};
 
     virtual ~Primitive() = default;
@@ -113,8 +118,11 @@ namespace rtweekend::detail {
     Sphere(point center, double radius, const Material& material)
       : Primitive{material}, center_{center}, radius_{radius} {}
 
-    [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
-                                         double tmax) const override;
+    [[nodiscard]] std::optional<Hit>
+    hit(const Ray &r, double tmin, double tmax) const override;
+
+    [[nodiscard]] std::optional<Aabb>
+    bounding_box(double time0, double time1) const override;
 
     const point& center() const {
       return center_;
@@ -133,8 +141,11 @@ namespace rtweekend::detail {
       : Primitive{material}, center0_{c0}, center1_{c1},
         t0_{t0}, t1_{t1}, radius_{radius} {};
 
-    [[nodiscard]] std::optional<Hit> hit(const Ray &r, double tmin,
-                                         double tmax) const override;
+    [[nodiscard]] std::optional<Hit>
+    hit(const Ray &r, double tmin, double tmax) const override;
+
+    [[nodiscard]] std::optional<Aabb>
+    bounding_box(double time0, double time1) const override;
 
     const point& center() const {
       return center0_;
