@@ -153,10 +153,6 @@ namespace rtweekend::detail {
 
     [[nodiscard]]
     point center(time_t time) const {
-      (void) time;
-      (void) t0_;
-      (void) t1_;
-      (void) center1_;
       return center0_ + ((time - t0_) / (t1_ - t0_))*(center1_ - center0_);
     }
     [[nodiscard]] const double& radius() const {return radius_;}
@@ -218,17 +214,19 @@ namespace rtweekend::detail {
   };
 
   template <typename Base>
-  class Store {
-    std::vector<std::unique_ptr<Base>> items_{};
+  class Store : private std::vector<std::unique_ptr<Base>> {
+    using IBase = std::vector<std::unique_ptr<Base>>;
+
   public:
     template <typename Derived, typename ...Args>
     Derived& add(Args&& ...args) {
-      items_.push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
-      return static_cast<Derived&>(*items_.back());
+      IBase::push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
+      return static_cast<Derived&>(*IBase::back());
     }
 
-    [[nodiscard]] auto begin() const {return items_.begin();}
-    [[nodiscard]] auto end() const {return items_.end();}
+    using IBase::cbegin, IBase::cend, IBase::size, IBase::data;
+    using IBase::begin, IBase::end;
+
   };
 
   struct World : public Store<Primitive> {
