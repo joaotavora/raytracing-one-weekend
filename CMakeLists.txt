@@ -13,6 +13,6 @@ add_compile_options(-Wall -Wextra -Werror -pedantic -gdwarf-4)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-# Make the "hello" executable target. Use globbing for src
 file(GLOB_RECURSE src_cpp CONFIGURE_DEPENDS "src/*.cpp")
 add_executable(${PROJECT_NAME} ${src_cpp})
+target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})

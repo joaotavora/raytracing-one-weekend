@@ -2,6 +2,7 @@
 glm/cci.20220420
 stb/cci.20210910
 cli11/2.2.0
+fmt/9.0.0
 
 [generators]
 cmake
