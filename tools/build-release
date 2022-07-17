@@ -3,8 +3,8 @@ set -e
 mkdir -p build-release
 (
     cd build-release
-    conan install --build=missing ../
     export CXX=${COMPILER:-'clang++'}
+    conan install --build=missing ../
     cmake -DCMAKE_BUILD_TYPE=Release ../ -G"Unix Makefiles"
     make
 )

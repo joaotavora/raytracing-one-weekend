@@ -3,8 +3,8 @@ set -e
 mkdir -p build-debug
 (
     cd build-debug
-    conan install --build=missing ../
     export CXX=${COMPILER:-'clang++'}
+    conan install --build=missing ../
     cmake -DCMAKE_BUILD_TYPE=Debug ../ -G"Unix Makefiles"
     make
 )
