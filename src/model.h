@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <span>
 #include <memory>
 #include <vector>
 #include <algorithm>
@@ -232,8 +233,9 @@ namespace rtweekend::detail {
   struct World : public Store<Primitive> {
     Store<Material> boutique;
   };
+  using WorldView_t = std::span<const std::unique_ptr<Primitive>>;
 
-  color ray_color(const Ray& ray, const World& world, size_t max_depth=20);
+  color ray_color(const Ray& ray, WorldView_t world, size_t max_depth);
 
 }  // namespace rtweekend::detail
 

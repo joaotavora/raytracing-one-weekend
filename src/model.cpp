@@ -1,11 +1,12 @@
 #include <glm/gtx/norm.hpp>
+#include <span>
 
 #include "vec3.h"
 #include "random_utils.h"
 #include "model.h"
 
 namespace rtweekend::detail {
-  color ray_color(const Ray& ray, const World& world, size_t max_depth) {
+  color ray_color(const Ray& ray, WorldView_t world, size_t max_depth) {
     std::optional<Hit> hit{};
     double upper_bound = std::numeric_limits<double>::infinity();
     for (const auto& h : world) {
@@ -23,7 +24,6 @@ namespace rtweekend::detail {
         return scatter->attenuation * ray_color(scatter->r, world, max_depth-1);
       return {0,0,0};
     }
-
     // Fallback to background
     // t is between 0 and 1, proportional to y
     // lower t, whiter image, higher t, bluer image centered
