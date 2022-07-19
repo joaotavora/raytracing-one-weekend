@@ -10,15 +10,17 @@
 
 namespace rt=rtweekend;
 
-rt::World lots_of_balls() {
+rt::World lots_of_balls(const rt::Config& cfg) {
   rt::World world{};
   auto& boutique = world.boutique;
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
   world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
 
-  for (int a = -11; a < 11; a++) {
-    for (int b = -11; b < 11; b++) {
+  int nsqrt = cfg.number_of_balls_sqrt;
+
+  for (int a = -nsqrt; a < nsqrt; a++) {
+    for (int b = -nsqrt; b < nsqrt; b++) {
       auto choose_mat = rt::random_double();
       rt::point center(a+ 0.9*rt::random_double(), 0.2, b + 0.9*rt::random_double());
 
@@ -27,9 +29,13 @@ rt::World lots_of_balls() {
         if (choose_mat < 0.8) {
           // diffuse
           auto albedo = rt::random_vec3() * rt::random_vec3();
-          auto center2 = center + rt::point(0, rt::random_double(0,.5), 0);
           mat = &boutique.add<rt::Lambertian>(albedo);
-          world.add<rt::MovingSphere>(center, center2, 0.0, 1.0, 0.2, *mat);
+          if (cfg.moving_spheres) {
+            auto center2 = center + rt::point(0, rt::random_double(0,.5), 0);
+            world.add<rt::MovingSphere>(center, center2, 0.0, 1.0, 0.2, *mat);
+          } else {
+            world.add<rt::Sphere>(center, 0.2, *mat);
+          }
         } else if (choose_mat < 0.95) {
           // metal
           auto albedo = rt::random_vec3(0.5, 1);
@@ -69,6 +75,10 @@ int main(int argc, char* argv[]) {
                  "Samples per pixel");
   app.add_option("-c,--max-child-rays", cfg.max_child_rays, "Max child rays");
   app.add_option("-a,--aspect-ratio", cfg.aspect_ratio, "Aspect ratio");
+  app.add_option("-n,--balls_sqrt", cfg.number_of_balls_sqrt,
+                 "Number of balls sqrt");
+  app.add_flag("-m,--moving-spheres", cfg.moving_spheres,
+                 "Moving spheres");
   app.add_flag("-q,--quick", quick, "Quickie");
   app.add_flag("--dry-run", dry_run, "Dry run");
 
@@ -76,6 +86,8 @@ int main(int argc, char* argv[]) {
 
   if (quick) {
     cfg.image_width = 200;
+    cfg.number_of_balls_sqrt = 11;
+    cfg.moving_spheres = true;
     cfg.samples_per_pixel = 20;
     cfg.max_child_rays = 20;
   }
@@ -96,5 +108,5 @@ int main(int argc, char* argv[]) {
                  0,
                  1};
 
-  rt::render(lots_of_balls(), cam, cfg);
+  rt::render(lots_of_balls(cfg), cam, cfg);
 }
