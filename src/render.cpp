@@ -29,6 +29,8 @@ namespace rtweekend {
     using Image = std::vector<color>;
     Image global_image(cfg.image_width *image_height, color{0, 0, 0});
 
+    auto root = detail::BVHNode{world};
+
     auto do_work = [&](int samples) {
       Image local_image(cfg.image_width * image_height, color{0, 0, 0});
       for (int i = 0; i < image_height; ++i) {
@@ -40,7 +42,7 @@ namespace rtweekend {
             auto u = (j + random_double()) / (cfg.image_width - 1);
             auto v = (from_top_i + random_double()) / (image_height - 1);
             auto r = cam.get_ray(u, v);
-            pixel_color += ray_color(r, detail::BVHNode{world}, cfg.max_child_rays);
+            pixel_color += ray_color(r, root, cfg.max_child_rays);
           }
           local_image[i * cfg.image_width + j] = pixel_color;
         }

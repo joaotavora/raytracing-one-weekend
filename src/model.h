@@ -49,7 +49,7 @@ namespace rtweekend::detail {
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
     [[nodiscard]] virtual std::optional<Aabb>
-    bounding_box(double time0, double time1) const = 0;
+    bounding_box() const = 0;
 
     explicit Primitive(const Material& m) : material_{&m} {};
 
@@ -123,7 +123,7 @@ namespace rtweekend::detail {
     hit(const Ray &r, double tmin, double tmax) const override;
 
     [[nodiscard]] std::optional<Aabb>
-    bounding_box(double time0, double time1) const override;
+    bounding_box() const override;
 
     const point& center() const {
       return center_;
@@ -137,16 +137,16 @@ namespace rtweekend::detail {
 
   class MovingSphere : public Primitive {
   public:
-    MovingSphere(point c0, point c1, time_t t0, time_t t1, double radius,
+    MovingSphere(point c0, point c1, double radius,
                  const Material& material)
       : Primitive{material}, center0_{c0}, center1_{c1},
-        t0_{t0}, t1_{t1}, radius_{radius} {};
+        t0_{0.0}, t1_{1.0}, radius_{radius} {};
 
     [[nodiscard]] std::optional<Hit>
     hit(const Ray &r, double tmin, double tmax) const override;
 
     [[nodiscard]] std::optional<Aabb>
-    bounding_box(double time0, double time1) const override;
+    bounding_box() const override;
 
     const point& center() const {
       return center0_;
@@ -234,27 +234,18 @@ namespace rtweekend::detail {
   using WorldView_t = std::span<const std::unique_ptr<Primitive>>;
 
 
-  struct BVHNode {
-    WorldView_t wv;
+  class BVHNode {
+    WorldView_t wv_;
+    Aabb bounding_box_;
+    std::unique_ptr<BVHNode> left_{};
+    std::unique_ptr<BVHNode> right_{};
+
+  public:
+    explicit BVHNode(WorldView_t wv);
 
     [[nodiscard]] std::optional<Hit>
-    hit(const Ray &r,
-        double tmin = 0.001,
-        double tmax = std::numeric_limits<double>::infinity()) const {
-      std::optional<Hit> hit{};
-      auto upper_bound = tmax;
-      for (const auto& h : wv) {
-        auto probe = h->hit(r, tmin, upper_bound);
-        if (probe) {
-          hit = probe;
-          upper_bound = probe->at();
-        }
-      }
-      return hit;
-    }
-
-    BVHNode* left{};
-    BVHNode* right{};
+    hit(const Ray &r, double tmin = 0.001,
+        double tmax = std::numeric_limits<double>::infinity()) const;
   };
 
   color ray_color(const Ray& ray, const BVHNode&, size_t max_depth);

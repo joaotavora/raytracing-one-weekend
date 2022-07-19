@@ -32,7 +32,7 @@ rt::World lots_of_balls(const rt::Config& cfg) {
           mat = &boutique.add<rt::Lambertian>(albedo);
           if (cfg.moving_spheres) {
             auto center2 = center + rt::point(0, rt::random_double(0,.5), 0);
-            world.add<rt::MovingSphere>(center, center2, 0.0, 1.0, 0.2, *mat);
+            world.add<rt::MovingSphere>(center, center2, 0.2, *mat);
           } else {
             world.add<rt::Sphere>(center, 0.2, *mat);
           }

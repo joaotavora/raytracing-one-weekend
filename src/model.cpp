@@ -1,5 +1,7 @@
 #include <glm/gtx/norm.hpp>
+#include <numeric>
 #include <span>
+#include <ranges>
 
 #include "vec3.h"
 #include "random_utils.h"
@@ -140,8 +142,7 @@ namespace rtweekend::detail {
     auto when = random_double(t0_, t1_);
     return Ray{from, direction, when};
   }
-  std::optional<Aabb> Sphere::bounding_box(double time0, double time1) const {
-    (void) time0, void (time1);
+  std::optional<Aabb> Sphere::bounding_box() const {
     return Aabb{center_ - vec3(radius_, radius_, radius_),
                 center_ + vec3(radius_, radius_, radius_)};
   }
@@ -158,13 +159,45 @@ namespace rtweekend::detail {
     return Aabb(small,big);
   }
 
-  std::optional<Aabb> MovingSphere::bounding_box(double time0, double time1) const {
+  std::optional<Aabb> MovingSphere::bounding_box() const {
+    double time0 = 0.0;
+    double time1 = 1.0;
     Aabb box0(
-        center(time0) - vec3(radius_, radius_, radius_),
-        center(time0) + vec3(radius_, radius_, radius_));
+              center(time0) - vec3(radius_, radius_, radius_),
+              center(time0) + vec3(radius_, radius_, radius_));
     Aabb box1(
-        center(time1) - vec3(radius_, radius_, radius_),
-        center(time1) + vec3(radius_, radius_, radius_));
+              center(time1) - vec3(radius_, radius_, radius_),
+              center(time1) + vec3(radius_, radius_, radius_));
     return surrounding_box(box0, box1);
-}
+  }
+  std::optional<Hit> BVHNode::hit(const Ray &r, double tmin, double tmax) const {
+    std::optional<Hit> hit{};
+    auto upper_bound = tmax;
+    for (const auto &h : wv_) {
+      auto probe = h->hit(r, tmin, upper_bound);
+      if (probe) {
+        hit = probe;
+        upper_bound = probe->at();
+      }
+    }
+    return hit;
+  }
+  BVHNode::BVHNode(WorldView_t wv) {
+    namespace rv = std::ranges::views;
+    if (wv.size() < 20) {
+      wv_ = wv;
+      for (const auto& p : wv) {
+        auto box_maybe = p->bounding_box();
+        if (box_maybe)
+          bounding_box_ = surrounding_box(bounding_box_, box_maybe.value());
+      }
+    } else {
+      auto total = wv.size();
+      auto leftn = total / 2;
+      left_ = std::make_unique<BVHNode>(wv.first(leftn));
+      right_ = std::make_unique<BVHNode>(wv.last(total - leftn));
+      bounding_box_ = surrounding_box(left_->bounding_box_,
+                                      right_->bounding_box_);
+    }
+  }
 } // namespace rtweekend::detail
