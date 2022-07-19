@@ -230,12 +230,34 @@ namespace rtweekend::detail {
 
   };
 
-  struct World : public Store<Primitive> {
-    Store<Material> boutique;
-  };
+  struct World : public Store<Primitive> { Store<Material> boutique; };
   using WorldView_t = std::span<const std::unique_ptr<Primitive>>;
 
-  color ray_color(const Ray& ray, WorldView_t world, size_t max_depth);
+
+  struct BVHNode {
+    WorldView_t wv;
+
+    [[nodiscard]] std::optional<Hit>
+    hit(const Ray &r,
+        double tmin = 0.001,
+        double tmax = std::numeric_limits<double>::infinity()) const {
+      std::optional<Hit> hit{};
+      auto upper_bound = tmax;
+      for (const auto& h : wv) {
+        auto probe = h->hit(r, tmin, upper_bound);
+        if (probe) {
+          hit = probe;
+          upper_bound = probe->at();
+        }
+      }
+      return hit;
+    }
+
+    BVHNode* left{};
+    BVHNode* right{};
+  };
+
+  color ray_color(const Ray& ray, const BVHNode&, size_t max_depth);
 
 }  // namespace rtweekend::detail
 

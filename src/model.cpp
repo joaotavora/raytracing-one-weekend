@@ -6,22 +6,14 @@
 #include "model.h"
 
 namespace rtweekend::detail {
-  color ray_color(const Ray& ray, WorldView_t world, size_t max_depth) {
-    std::optional<Hit> hit{};
-    double upper_bound = std::numeric_limits<double>::infinity();
-    for (const auto& h : world) {
-      auto probe = h->hit(ray, 0.001, upper_bound);
-      if (probe) {
-        hit = probe;
-        upper_bound = probe->at();
-      }
-    }
+  color ray_color(const Ray& ray, const BVHNode& root, size_t max_depth) {
+    auto hit = root.hit(ray);
     if (hit) {
       if (max_depth <= 0) return {0,0,0};
 
       auto scatter = hit->what().material().scatter(ray, hit.value());
       if (scatter)
-        return scatter->attenuation * ray_color(scatter->r, world, max_depth-1);
+        return scatter->attenuation * ray_color(scatter->r, root, max_depth-1);
       return {0,0,0};
     }
     // Fallback to background
