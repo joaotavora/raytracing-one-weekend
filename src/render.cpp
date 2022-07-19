@@ -19,7 +19,7 @@ namespace rtweekend {
         << static_cast<int>(256 * std::clamp(c.b, 0.0, 0.999)) << '\n';
   }
 
-  void render(const World &world, const Camera &cam, const Config &cfg) {
+  void render(World world, const Camera &cam, const Config &cfg) {
     int image_height = static_cast<int>(cfg.image_width / cfg.aspect_ratio);
 
     namespace khr = std::chrono;
@@ -30,6 +30,8 @@ namespace rtweekend {
     Image global_image(cfg.image_width *image_height, color{0, 0, 0});
 
     auto root = detail::BVHNode{world};
+
+    std::cerr << "Total BVH stupid volume: " << root.stupid_volume() << "\n";
 
     auto do_work = [&](int samples) {
       Image local_image(cfg.image_width * image_height, color{0, 0, 0});

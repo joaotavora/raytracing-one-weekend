@@ -2,6 +2,7 @@
 #include <numeric>
 #include <span>
 #include <ranges>
+#include <iostream>
 
 #include "vec3.h"
 #include "random_utils.h"
@@ -159,6 +160,18 @@ namespace rtweekend::detail {
     return Aabb(small,big);
   }
 
+  Aabb intersection_box(Aabb box0, Aabb box1) {
+    point small(fmax(box0.min().x, box1.min().x),
+                fmax(box0.min().y, box1.min().y),
+                fmax(box0.min().z, box1.min().z));
+
+    point big(fmin(box0.max().x, box1.max().x),
+              fmin(box0.max().y, box1.max().y),
+              fmin(box0.max().z, box1.max().z));
+
+    return Aabb(small,big);
+  }
+
   std::optional<Aabb> MovingSphere::bounding_box() const {
     double time0 = 0.0;
     double time1 = 1.0;
@@ -193,7 +206,7 @@ namespace rtweekend::detail {
 
   BVHNode::BVHNode(WorldView_t wv) {
     namespace rv = std::ranges::views;
-    if (!wv.empty() && wv.size() <= 4) {
+    if (!wv.empty() && wv.size() <= 6) {
       wv_ = wv;
       for (const auto& p : wv) {
         auto box_maybe = p->bounding_box();
@@ -201,6 +214,33 @@ namespace rtweekend::detail {
           bounding_box_ = surrounding_box(bounding_box_, box_maybe.value());
       }
     } else {
+      auto axis = [&]{
+        auto pbegbb = (*wv.begin())->bounding_box();
+        auto pendbb = (*wv.rbegin())->bounding_box();
+        int retval{};
+        if (pbegbb && pendbb) {
+          auto delta = pendbb->min() - pbegbb->min();
+          if (::fabs(delta.x) > ::fabs(delta.y)) {
+            if (::fabs(delta.x) > ::fabs(delta.z)) retval = 0;
+            else retval = 2;
+          } else {
+            if (::fabs(delta.y) > ::fabs(delta.z)) retval = 1;
+            else retval = 2;
+          }
+        }
+        return retval;
+      }();
+      std::sort(wv.begin(), wv.end(),
+                [&axis](auto& p1, auto& p2) {
+                auto p1b = p1->bounding_box();
+                auto p2b = p2->bounding_box();
+
+                if (p1b && p2b) {
+                  return p1b->min()[axis] < p2b->min()[axis];
+                }
+                return true;
+                });
+
       auto total = wv.size();
       auto leftn = total / 2;
       left_ = std::make_unique<BVHNode>(wv.first(leftn));
@@ -208,5 +248,34 @@ namespace rtweekend::detail {
       bounding_box_ = surrounding_box(left_->bounding_box_,
                                       right_->bounding_box_);
     }
+  }
+
+  std::ostream& operator<<(std::ostream& o, const point& x) {
+    return o << "[" << x.x << "," << x.y << "," << x.z << "]";
+  }
+
+  std::ostream& operator<<(std::ostream& o, const Aabb& x) {
+    return o << "[Aabb min: " << x.min() << " max: " << x.max() << "]";
+  }
+
+  // double BVHNode::volume() const {
+  //   return bounding_box_.volume() +
+  //     (left_?left_->volume():0) +
+  //     (right_?right_->volume():0);
+  // };
+
+  double BVHNode::stupid_volume() const {
+    double myown = bounding_box_.volume();
+    double childrens = 0;
+    if (left_ && right_) {
+      myown-= left_->bounding_box_.volume();
+      myown-= right_->bounding_box_.volume();
+      childrens+= left_->stupid_volume();
+      childrens+= right_->stupid_volume();
+    } else {
+      myown = 0;
+    }
+    if (myown < 0) myown = -myown; else myown = 0;
+    return myown + childrens;
   }
 } // namespace rtweekend::detail

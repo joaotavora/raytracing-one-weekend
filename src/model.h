@@ -171,6 +171,9 @@ namespace rtweekend::detail {
 
     const point& min() const {return min_; }
     const point& max() const {return max_; }
+    double volume() const {
+      return (max_.x - min_.x) * (max_.y - min_.y) * (max_.z - min_.z);
+    }
 
     bool hit(const Ray& r, double t_min, double t_max) const {
       for (int a = 0; a < 3; a++) {
@@ -231,7 +234,7 @@ namespace rtweekend::detail {
   };
 
   struct World : public Store<Primitive> { Store<Material> boutique; };
-  using WorldView_t = std::span<const std::unique_ptr<Primitive>>;
+  using WorldView_t = std::span<std::unique_ptr<Primitive>>;
 
 
   class BVHNode {
@@ -241,6 +244,7 @@ namespace rtweekend::detail {
     std::unique_ptr<BVHNode> right_{};
 
   public:
+    double stupid_volume() const;
     explicit BVHNode(WorldView_t wv);
 
     [[nodiscard]] std::optional<Hit>

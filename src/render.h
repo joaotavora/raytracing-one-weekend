@@ -13,7 +13,7 @@ namespace rtweekend {
     int max_child_rays = 50;
     int nthreads = 4;
   };
-  void render(const World &world, const Camera &cam, const Config &cfg);
+  void render(World world, const Camera &cam, const Config &cfg);
 
   std::ostream& operator<<(std::ostream& o, const Config& c);
 } // namespace rtweekend
