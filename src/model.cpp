@@ -171,20 +171,29 @@ namespace rtweekend::detail {
     return surrounding_box(box0, box1);
   }
   std::optional<Hit> BVHNode::hit(const Ray &r, double tmin, double tmax) const {
-    std::optional<Hit> hit{};
-    auto upper_bound = tmax;
-    for (const auto &h : wv_) {
-      auto probe = h->hit(r, tmin, upper_bound);
-      if (probe) {
-        hit = probe;
-        upper_bound = probe->at();
+    if (!bounding_box_.hit(r, tmin, tmax)) return {};
+
+    if (!wv_.empty()) {
+      std::optional<Hit> hit{};
+      auto upper_bound = tmax;
+      for (const auto &h : wv_) {
+        auto probe = h->hit(r, tmin, upper_bound);
+        if (probe) {
+          hit = probe;
+          upper_bound = probe->at();
+        }
       }
+      return hit;
     }
-    return hit;
+    auto left_probe = left_->hit(r, tmin, tmax);
+    auto right_probe = right_->hit(r, tmin, left_probe?left_probe->at():tmax);
+    if (right_probe) return right_probe;
+    return left_probe;
   }
+
   BVHNode::BVHNode(WorldView_t wv) {
     namespace rv = std::ranges::views;
-    if (wv.size() < 20) {
+    if (!wv.empty() && wv.size() <= 4) {
       wv_ = wv;
       for (const auto& p : wv) {
         auto box_maybe = p->bounding_box();
