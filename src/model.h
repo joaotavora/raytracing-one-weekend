@@ -9,6 +9,8 @@
 #include "vec3.h"
 
 namespace rtweekend::detail {
+  extern int thrashing_allocator_pathos; // NOLINT
+
   using time_t = double;
  
   class Hit;
@@ -224,7 +226,10 @@ namespace rtweekend::detail {
   public:
     template <typename Derived, typename ...Args>
     Derived& add(Args&& ...args) {
-      IBase::push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
+      for (int i = 0; i < thrashing_allocator_pathos + 1; ++i)
+        IBase::push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
+      for (int i = 0; i < thrashing_allocator_pathos; ++i)
+        IBase::pop_back();
       return static_cast<Derived&>(*IBase::back());
     }
 

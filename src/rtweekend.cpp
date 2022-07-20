@@ -10,6 +10,8 @@
 
 namespace rt=rtweekend;
 
+int rt::detail::thrashing_allocator_pathos = 0; // NOLINT
+
 rt::World lots_of_balls(const rt::Config& cfg) {
   rt::World world{};
   auto& boutique = world.boutique;
@@ -77,6 +79,9 @@ int main(int argc, char* argv[]) {
   app.add_option("-a,--aspect-ratio", cfg.aspect_ratio, "Aspect ratio");
   app.add_option("-n,--balls_sqrt", cfg.number_of_balls_sqrt,
                  "Number of balls sqrt");
+  app.add_option("--thrash,--thrashing-allocator-pathos",
+                 rtweekend::detail::thrashing_allocator_pathos,
+                 "Thrashing_allocator_pathos");
   app.add_flag("-m,--moving-spheres", cfg.moving_spheres,
                  "Moving spheres");
   app.add_flag("-q,--quick", quick, "Quickie");
