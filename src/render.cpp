@@ -5,7 +5,7 @@
 
 #include "random_utils.h"
 #include "render.h"
-#include "model.h"
+#include "oomodel.h"
 
 namespace rtweekend::detail {
   static void write_color(std::ostream &out, color c, int samples_per_pixel) {

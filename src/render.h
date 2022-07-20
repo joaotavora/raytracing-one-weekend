@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model.h"
+#include "oomodel.h"
 #include <iosfwd>
 
 namespace rtweekend::detail {

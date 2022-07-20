@@ -5,7 +5,7 @@
 #include <CLI/Config.hpp>
 
 #include "random_utils.h"
-#include "model.h"
+#include "oomodel.h"
 #include "render.h"
 
 namespace rt=rtweekend;
