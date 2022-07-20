@@ -192,6 +192,8 @@ namespace rtweekend::detail {
     point max_{};
   };
 
+  Aabb surrounding_box(Aabb box0, Aabb box1);
+
   class Camera {
   public:
     static constexpr auto focal_length = 1.0;
@@ -233,25 +235,6 @@ namespace rtweekend::detail {
 
   struct World : public Store<Primitive> { Store<Material> boutique; };
   using WorldView_t = std::span<std::unique_ptr<Primitive>>;
-
-
-  class BVHNode {
-    WorldView_t wv_;
-    Aabb bounding_box_;
-    std::unique_ptr<BVHNode> left_{};
-    std::unique_ptr<BVHNode> right_{};
-
-  public:
-    double stupid_volume() const;
-    explicit BVHNode(WorldView_t wv);
-
-    [[nodiscard]] std::optional<Hit>
-    hit(const Ray &r, double tmin = 0.001,
-        double tmax = std::numeric_limits<double>::infinity()) const;
-  };
-
-  color ray_color(const Ray& ray, const BVHNode&, size_t max_depth);
-
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
@@ -262,7 +245,6 @@ namespace rtweekend {
   using detail::Lambertian;
   using detail::Metal;
   using detail::Dielectric;
-  using detail::ray_color;
   using detail::Camera;
 }  // namespace rtweekend
 

@@ -9,25 +9,6 @@
 #include "model.h"
 
 namespace rtweekend::detail {
-  color ray_color(const Ray& ray, const BVHNode& root, size_t max_depth) {
-    auto hit = root.hit(ray);
-    if (hit) {
-      if (max_depth <= 0) return {0,0,0};
-
-      auto scatter = hit->what().material().scatter(ray, hit.value());
-      if (scatter)
-        return scatter->attenuation * ray_color(scatter->r, root, max_depth-1);
-      return {0,0,0};
-    }
-    // Fallback to background
-    // t is between 0 and 1, proportional to y
-    // lower t, whiter image, higher t, bluer image centered
-    vec3 unit_direction = glm::normalize(ray.direction());
-    auto ycomp = unit_direction.y;
-    auto t =  0.5*(ycomp + +1.0);
-    return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
-  }
-
   std::optional<ScatterRecord> Lambertian::scatter(const Ray &r,
                                                    const Hit &hit) const {
     auto rand = random_unit_vector();
@@ -183,66 +164,6 @@ namespace rtweekend::detail {
               center(time1) + vec3(radius_, radius_, radius_));
     return surrounding_box(box0, box1);
   }
-  std::optional<Hit> BVHNode::hit(const Ray &r, double tmin, double tmax) const {
-    if (!bounding_box_.hit(r, tmin, tmax)) return {};
-
-    if (!wv_.empty()) {
-      std::optional<Hit> hit{};
-      auto upper_bound = tmax;
-      for (const auto &h : wv_) {
-        auto probe = h->hit(r, tmin, upper_bound);
-        if (probe) {
-          hit = probe;
-          upper_bound = probe->at();
-        }
-      }
-      return hit;
-    }
-    auto left_probe = left_->hit(r, tmin, tmax);
-    auto right_probe = right_->hit(r, tmin, left_probe?left_probe->at():tmax);
-    if (right_probe) return right_probe;
-    return left_probe;
-  }
-
-  BVHNode::BVHNode(WorldView_t wv) {
-    namespace rv = std::ranges::views;
-    if (!wv.empty() && wv.size() <= 6) {
-      wv_ = wv;
-      for (const auto& p : wv) {
-        bounding_box_ = surrounding_box(bounding_box_, p->bounding_box());
-      }
-    } else {
-      auto axis = [&]{
-        auto pbegbb = (*wv.begin())->bounding_box();
-        auto pendbb = (*wv.rbegin())->bounding_box();
-        int retval{};
-        auto delta = pendbb.min() - pbegbb.min();
-        if (::fabs(delta.x) > ::fabs(delta.y)) {
-          if (::fabs(delta.x) > ::fabs(delta.z)) retval = 0;
-          else retval = 2;
-        } else {
-          if (::fabs(delta.y) > ::fabs(delta.z)) retval = 1;
-          else retval = 2;
-        }
-        return retval;
-      }();
-      std::sort(wv.begin(), wv.end(),
-                [&axis](auto& p1, auto& p2) {
-                auto p1b = p1->bounding_box();
-                auto p2b = p2->bounding_box();
-
-                return p1b.min()[axis] < p2b.min()[axis];
-                return true;
-                });
-
-      auto total = wv.size();
-      auto leftn = total / 2;
-      left_ = std::make_unique<BVHNode>(wv.first(leftn));
-      right_ = std::make_unique<BVHNode>(wv.last(total - leftn));
-      bounding_box_ = surrounding_box(left_->bounding_box_,
-                                      right_->bounding_box_);
-    }
-  }
 
   std::ostream& operator<<(std::ostream& o, const point& x) {
     return o << "[" << x.x << "," << x.y << "," << x.z << "]";
@@ -252,24 +173,4 @@ namespace rtweekend::detail {
     return o << "[Aabb min: " << x.min() << " max: " << x.max() << "]";
   }
 
-  // double BVHNode::volume() const {
-  //   return bounding_box_.volume() +
-  //     (left_?left_->volume():0) +
-  //     (right_?right_->volume():0);
-  // };
-
-  double BVHNode::stupid_volume() const {
-    double myown = bounding_box_.volume();
-    double childrens = 0;
-    if (left_ && right_) {
-      myown-= left_->bounding_box_.volume();
-      myown-= right_->bounding_box_.volume();
-      childrens+= left_->stupid_volume();
-      childrens+= right_->stupid_volume();
-    } else {
-      myown = 0;
-    }
-    if (myown < 0) myown = -myown; else myown = 0;
-    return myown + childrens;
-  }
 } // namespace rtweekend::detail

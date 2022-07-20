@@ -3,7 +3,7 @@
 #include "model.h"
 #include <iosfwd>
 
-namespace rtweekend {
+namespace rtweekend::detail {
   struct Config {
     int number_of_balls_sqrt = 11;
     double aspect_ratio = 3.0/2.0;
@@ -16,8 +16,12 @@ namespace rtweekend {
   void render(World world, const Camera &cam, const Config &cfg);
 
   std::ostream& operator<<(std::ostream& o, const Config& c);
-} // namespace rtweekend
+} // namespace rtweekend::detail
 
+namespace rtweekend {
+  using detail::render;
+  using detail::Config;
+}
 // Local Variables:
 // mode: c++
 // End:
