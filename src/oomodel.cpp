@@ -6,7 +6,7 @@
 
 #include "vec3.h"
 #include "random_utils.h"
-#include "model.h"
+#include "oomodel.h"
 
 namespace rtweekend::detail {
   std::optional<ScatterRecord> Lambertian::scatter(const Ray &r,
