@@ -48,8 +48,7 @@ namespace rtweekend::detail {
     [[nodiscard]] virtual std::optional<Hit>
     hit(const Ray& r, double tmin, double tmax) const = 0;
 
-    [[nodiscard]] virtual std::optional<Aabb>
-    bounding_box() const = 0;
+    [[nodiscard]] virtual Aabb bounding_box() const = 0;
 
     explicit Primitive(const Material& m) : material_{&m} {};
 
@@ -122,7 +121,7 @@ namespace rtweekend::detail {
     [[nodiscard]] std::optional<Hit>
     hit(const Ray &r, double tmin, double tmax) const override;
 
-    [[nodiscard]] std::optional<Aabb>
+    [[nodiscard]] Aabb
     bounding_box() const override;
 
     const point& center() const {
@@ -145,8 +144,7 @@ namespace rtweekend::detail {
     [[nodiscard]] std::optional<Hit>
     hit(const Ray &r, double tmin, double tmax) const override;
 
-    [[nodiscard]] std::optional<Aabb>
-    bounding_box() const override;
+    [[nodiscard]] Aabb bounding_box() const override;
 
     const point& center() const {
       return center0_;

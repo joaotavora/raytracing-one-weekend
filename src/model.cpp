@@ -143,7 +143,7 @@ namespace rtweekend::detail {
     auto when = random_double(t0_, t1_);
     return Ray{from, direction, when};
   }
-  std::optional<Aabb> Sphere::bounding_box() const {
+  Aabb Sphere::bounding_box() const {
     return Aabb{center_ - vec3(radius_, radius_, radius_),
                 center_ + vec3(radius_, radius_, radius_)};
   }
@@ -172,7 +172,7 @@ namespace rtweekend::detail {
     return Aabb(small,big);
   }
 
-  std::optional<Aabb> MovingSphere::bounding_box() const {
+  Aabb MovingSphere::bounding_box() const {
     double time0 = 0.0;
     double time1 = 1.0;
     Aabb box0(
@@ -209,24 +209,20 @@ namespace rtweekend::detail {
     if (!wv.empty() && wv.size() <= 6) {
       wv_ = wv;
       for (const auto& p : wv) {
-        auto box_maybe = p->bounding_box();
-        if (box_maybe)
-          bounding_box_ = surrounding_box(bounding_box_, box_maybe.value());
+        bounding_box_ = surrounding_box(bounding_box_, p->bounding_box());
       }
     } else {
       auto axis = [&]{
         auto pbegbb = (*wv.begin())->bounding_box();
         auto pendbb = (*wv.rbegin())->bounding_box();
         int retval{};
-        if (pbegbb && pendbb) {
-          auto delta = pendbb->min() - pbegbb->min();
-          if (::fabs(delta.x) > ::fabs(delta.y)) {
-            if (::fabs(delta.x) > ::fabs(delta.z)) retval = 0;
-            else retval = 2;
-          } else {
-            if (::fabs(delta.y) > ::fabs(delta.z)) retval = 1;
-            else retval = 2;
-          }
+        auto delta = pendbb.min() - pbegbb.min();
+        if (::fabs(delta.x) > ::fabs(delta.y)) {
+          if (::fabs(delta.x) > ::fabs(delta.z)) retval = 0;
+          else retval = 2;
+        } else {
+          if (::fabs(delta.y) > ::fabs(delta.z)) retval = 1;
+          else retval = 2;
         }
         return retval;
       }();
@@ -235,9 +231,7 @@ namespace rtweekend::detail {
                 auto p1b = p1->bounding_box();
                 auto p2b = p2->bounding_box();
 
-                if (p1b && p2b) {
-                  return p1b->min()[axis] < p2b->min()[axis];
-                }
+                return p1b.min()[axis] < p2b.min()[axis];
                 return true;
                 });
 
