@@ -4,6 +4,7 @@ mkdir -p build-debug
 (
     cd build-debug
     export CXX=${COMPILER:-'clang++'}
+    export CXXFLAGS="$CXXFLAGS -fsanitize=address -fsanitize=undefined"
     conan install --build=missing ../
     cmake -DCMAKE_BUILD_TYPE=Debug ../ -G"Unix Makefiles"
     make
