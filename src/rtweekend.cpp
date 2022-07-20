@@ -5,19 +5,20 @@
 #include <CLI/Config.hpp>
 
 #include "random_utils.h"
-#include "oomodel.h"
+#include "vmodel.h"
 #include "render.h"
 
 namespace rt=rtweekend;
-
+#if 0
 int rt::detail::thrashing_allocator_pathos = 0; // NOLINT
+#endif
 
 rt::World lots_of_balls(const rt::Config& cfg) {
   rt::World world{};
   auto& boutique = world.boutique;
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
-  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
+  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000.0, ground_material);
 
   int nsqrt = cfg.number_of_balls_sqrt;
 
@@ -79,9 +80,11 @@ int main(int argc, char* argv[]) {
   app.add_option("-a,--aspect-ratio", cfg.aspect_ratio, "Aspect ratio");
   app.add_option("-n,--balls_sqrt", cfg.number_of_balls_sqrt,
                  "Number of balls sqrt");
+  #if 0
   app.add_option("--thrash,--thrashing-allocator-pathos",
                  rtweekend::detail::thrashing_allocator_pathos,
                  "Thrashing_allocator_pathos");
+#endif
   app.add_flag("-m,--moving-spheres", cfg.moving_spheres,
                  "Moving spheres");
   app.add_flag("-q,--quick", quick, "Quickie");
@@ -113,5 +116,6 @@ int main(int argc, char* argv[]) {
                  0,
                  1};
 
-  rt::render(lots_of_balls(cfg), cam, cfg);
+  auto w = lots_of_balls(cfg);
+  rt::render(w, cam, cfg);
 }

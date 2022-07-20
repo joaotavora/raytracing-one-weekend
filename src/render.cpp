@@ -5,7 +5,7 @@
 
 #include "random_utils.h"
 #include "render.h"
-#include "oomodel.h"
+#include "vmodel.h"
 
 namespace rtweekend::detail {
   static void write_color(std::ostream &out, color c, int samples_per_pixel) {
@@ -57,7 +57,9 @@ namespace rtweekend::detail {
       std::optional<Hit> hit{};
       auto upper_bound = tmax;
       for (const auto &h : wv_) {
-        auto probe = h->hit(r, tmin, upper_bound);
+        auto probe = std::visit([&](const auto& x){
+          return x.hit(r, tmin, upper_bound);
+        }, h);
         if (probe) {
           hit = probe;
           upper_bound = probe->at();
@@ -76,12 +78,14 @@ namespace rtweekend::detail {
     if (!wv.empty() && wv.size() <= 6) {
       wv_ = wv;
       for (const auto& p : wv) {
-        bounding_box_ = surrounding_box(bounding_box_, p->bounding_box());
+        bounding_box_ =
+          surrounding_box(bounding_box_,
+                          std::visit([](const auto& p){return p.bounding_box();}, p));
       }
     } else {
       auto axis = [&]{
-        auto pbegbb = (*wv.begin())->bounding_box();
-        auto pendbb = (*wv.rbegin())->bounding_box();
+        auto pbegbb = std::visit([](const auto& p){return p.bounding_box();}, *wv.begin());
+        auto pendbb = std::visit([](const auto& p){return p.bounding_box();}, *wv.rbegin());
         int retval{};
         auto delta = pendbb.min() - pbegbb.min();
         if (::fabs(delta.x) > ::fabs(delta.y)) {
@@ -95,8 +99,8 @@ namespace rtweekend::detail {
       }();
       std::sort(wv.begin(), wv.end(),
                 [&axis](auto& p1, auto& p2) {
-                auto p1b = p1->bounding_box();
-                auto p2b = p2->bounding_box();
+                auto p1b = std::visit([](const auto& p){return p.bounding_box();}, p1);
+                auto p2b = std::visit([](const auto& p){return p.bounding_box();}, p2);
 
                 return p1b.min()[axis] < p2b.min()[axis];
                 return true;
@@ -130,7 +134,7 @@ namespace rtweekend::detail {
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 
-  void render(World world, const Camera &cam, const Config &cfg) {
+  void render(World& world, const Camera &cam, const Config &cfg) {
     int image_height = static_cast<int>(cfg.image_width / cfg.aspect_ratio);
 
     namespace khr = std::chrono;
