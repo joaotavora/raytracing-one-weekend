@@ -1,3 +1,0 @@
-#!/bin/sh
-rg --files src |
-   entr -r -s './tools/build-release > /dev/null && build-release/bin/rtweekend -q > /tmp/teste.ppm'
