@@ -4,7 +4,7 @@
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
 
-#include "random_utils.h"
+#include "random-utils.h"
 #include "oomodel.h"
 #include "render.h"
 

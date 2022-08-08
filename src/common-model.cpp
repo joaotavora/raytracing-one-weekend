@@ -5,7 +5,8 @@
 #include <iostream>
 
 #include "vec3.h"
-#include "random_utils.h"
+#include "random-utils.h"
+#include "common-model.h"
 #include "oomodel.h"
 
 namespace rtweekend::detail {
@@ -27,6 +28,13 @@ namespace rtweekend::detail {
     return ScatterRecord{
       .r = Ray{hit.where(), reflected + fuzz * random_unit_vector(), r.time()},
       .attenuation = albedo};
+  }
+
+  static double reflectance(double cosine, double ref_idx) {
+    // Use Schlick's approximation for reflectance.
+    auto r0 = (1-ref_idx) / (1+ref_idx);
+    r0 = r0*r0;
+    return r0 + (1-r0)*pow((1 - cosine),5);
   }
 
   std::optional<ScatterRecord> Dielectric::scatter(const Ray &r,

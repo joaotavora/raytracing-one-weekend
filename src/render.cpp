@@ -3,7 +3,7 @@
 #include <iostream>
 #include <random>
 
-#include "random_utils.h"
+#include "random-utils.h"
 #include "render.h"
 #include "oomodel.h"
 

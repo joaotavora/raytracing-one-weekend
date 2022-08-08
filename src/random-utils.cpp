@@ -1,6 +1,5 @@
 #include <glm/gtx/norm.hpp>
-#include "random_utils.h"
-
+#include "random-utils.h"
 
 namespace rtweekend::detail {
 
