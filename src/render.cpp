@@ -7,6 +7,8 @@
 #include "render.h"
 #include "oomodel.h"
 
+#include <fmt/core.h>
+
 namespace rtweekend::detail {
   static void write_color(std::ostream &out, color c, int samples_per_pixel) {
     // Divide the color by the number of samples and correct with gamma=2
@@ -19,16 +21,15 @@ namespace rtweekend::detail {
         << static_cast<int>(256 * std::clamp(c.b, 0.0, 0.999)) << '\n';
   }
 
-
   class BVHNode {
-    WorldView_t wv_;
+    PView_t wv_;
     Aabb bounding_box_;
     std::unique_ptr<BVHNode> left_{};
     std::unique_ptr<BVHNode> right_{};
 
   public:
     double stupid_volume() const;
-    explicit BVHNode(WorldView_t wv);
+    explicit BVHNode(PView_t wv);
 
     [[nodiscard]] std::optional<Hit>
     hit(const Ray &r, double tmin = 0.001,
@@ -71,8 +72,7 @@ namespace rtweekend::detail {
     return left_probe;
   }
 
-  BVHNode::BVHNode(WorldView_t wv) {
-    namespace rv = std::ranges::views;
+  BVHNode::BVHNode(PView_t wv) {
     if (!wv.empty() && wv.size() <= 6) {
       wv_ = wv;
       for (const auto& p : wv) {
@@ -130,7 +130,11 @@ namespace rtweekend::detail {
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 
-  void render(World world, const Camera &cam, const Config &cfg) {
+  BVHNode World::get_root_bvh() const {
+      return detail::BVHNode{primitives_};
+  }
+
+  void render(const World& world, const Camera &cam, const Config &cfg) {
     int image_height = static_cast<int>(cfg.image_width / cfg.aspect_ratio);
 
     namespace khr = std::chrono;
@@ -140,7 +144,7 @@ namespace rtweekend::detail {
     using Image = std::vector<color>;
     Image global_image(cfg.image_width *image_height, color{0, 0, 0});
 
-    auto root = detail::BVHNode{world};
+    auto root = world.get_root_bvh();
 
     std::cerr << "Total BVH stupid volume: " << root.stupid_volume() << "\n";
 

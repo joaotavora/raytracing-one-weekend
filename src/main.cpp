@@ -14,10 +14,10 @@ int rt::detail::thrashing_allocator_pathos = 0; // NOLINT
 
 rt::World lots_of_balls(const rt::Config& cfg) {
   rt::World world{};
-  auto& boutique = world.boutique;
+  auto& boutique = world.boutique();
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
-  world.add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
+  world.primitives().add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
 
   int nsqrt = cfg.number_of_balls_sqrt;
 
@@ -34,20 +34,20 @@ rt::World lots_of_balls(const rt::Config& cfg) {
           mat = &boutique.add<rt::Lambertian>(albedo);
           if (cfg.moving_spheres) {
             auto center2 = center + rt::point(0, rt::random_double(0,.5), 0);
-            world.add<rt::MovingSphere>(center, center2, 0.2, *mat);
+            world.primitives().add<rt::MovingSphere>(center, center2, 0.2, *mat);
           } else {
-            world.add<rt::Sphere>(center, 0.2, *mat);
+            world.primitives().add<rt::Sphere>(center, 0.2, *mat);
           }
         } else if (choose_mat < 0.95) {
           // metal
           auto albedo = rt::random_vec3(0.5, 1);
           auto fuzz = rt::random_double(0, 0.5);
           mat = &boutique.add<rt::Metal>(albedo, fuzz);
-          world.add<rt::Sphere>(center, 0.2, *mat);
+          world.primitives().add<rt::Sphere>(center, 0.2, *mat);
         } else {
           // glass
           mat = &boutique.add<rt::Dielectric>(1.5);
-          world.add<rt::Sphere>(center, 0.2, *mat);
+          world.primitives().add<rt::Sphere>(center, 0.2, *mat);
         }
       }
     }
@@ -57,9 +57,9 @@ rt::World lots_of_balls(const rt::Config& cfg) {
   auto& reddish = boutique.add<rt::Lambertian>(rt::color{0.4, 0.2, 0.1});
   auto& reddish_metal = boutique.add<rt::Metal>(rt::color{0.7, 0.6, 0.5});
 
-  world.add<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass);
-  world.add<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish);
-  world.add<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal);
+  world.primitives().add<rt::Sphere>(rt::point(0, 1, 0), 1.0, glass);
+  world.primitives().add<rt::Sphere>(rt::point(-4, 1, 0), 1.0, reddish);
+  world.primitives().add<rt::Sphere>(rt::point(4, 1, 0), 1.0, reddish_metal);
   return world;
 }
 

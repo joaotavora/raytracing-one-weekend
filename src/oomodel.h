@@ -238,12 +238,10 @@ namespace rtweekend::detail {
 
   };
 
-  struct World : public Store<Primitive> { Store<Material> boutique; };
-  using WorldView_t = std::span<std::unique_ptr<Primitive>>;
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
-  using detail::World;
+  using detail::Store;
   using detail::Sphere;
   using detail::MovingSphere;
   using detail::Material;
