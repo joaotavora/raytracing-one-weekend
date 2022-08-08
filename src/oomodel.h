@@ -112,25 +112,6 @@ namespace rtweekend::detail {
     double radius_;
   };
 
-  template <typename Base>
-  class Store : private std::vector<std::unique_ptr<Base>> {
-    using IBase = std::vector<std::unique_ptr<Base>>;
-
-  public:
-    template <typename Derived, typename ...Args>
-    Derived& add(Args&& ...args) {
-      for (int i = 0; i < thrashing_allocator_pathos + 1; ++i)
-        IBase::push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
-      for (int i = 0; i < thrashing_allocator_pathos; ++i)
-        IBase::pop_back();
-      return static_cast<Derived&>(*IBase::back());
-    }
-
-    using IBase::cbegin, IBase::cend, IBase::size, IBase::data;
-    using IBase::begin, IBase::end;
-
-  };
-
   inline auto hit(const std::unique_ptr<Primitive>& h, const Ray& r, double tmin, double tmax) {
     return h->hit(r, tmin, tmax);
   }
@@ -141,7 +122,8 @@ namespace rtweekend::detail {
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
-  using detail::Store;
+  using PrimitiveStore_t = detail::OOStore<detail::Primitive>;
+  using MaterialStore_t = detail::OOStore<detail::Material>;
   using detail::Sphere;
   using detail::MovingSphere;
   using detail::Material;

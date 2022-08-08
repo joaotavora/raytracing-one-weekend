@@ -1,6 +1,8 @@
 #pragma once
 
 #include <optional>
+#include <vector>
+#include <memory>
 
 #include "vec3.h"
 
@@ -13,8 +15,8 @@ namespace rtweekend::detail {
 
   class Ray {
   public:
-  Ray(point origin, vec3 direction, time_t time = 0.0) :
-    origin_{origin},
+    Ray(point origin, vec3 direction, time_t time = 0.0) :
+      origin_{origin},
       direction_{direction},
       time_{time}{}
     vec3 at(double t) const {return origin_ + direction_ * t;}
@@ -42,9 +44,9 @@ namespace rtweekend::detail {
     vec3 normal_;
     bool front_facing_;
   public:
-  Hit(const Primitive& what, point where, double at, vec3 normal,
-      bool front_facing) :
-    what_{&what}, where_{where}, at_{at}, normal_{normal}, front_facing_{front_facing} {}
+    Hit(const Primitive& what, point where, double at, vec3 normal,
+        bool front_facing) :
+      what_{&what}, where_{where}, at_{at}, normal_{normal}, front_facing_{front_facing} {}
 
     [[nodiscard]] const Primitive& what() const {return *what_;}
     [[nodiscard]] const point& where() const noexcept {return where_;}
@@ -109,9 +111,27 @@ namespace rtweekend::detail {
     double t0_, t1_;
   };
 
+  template <typename Base>
+  class OOStore : private std::vector<std::unique_ptr<Base>> {
+    using IBase = std::vector<std::unique_ptr<Base>>;
+
+  public:
+    template <typename Derived, typename ...Args>
+    Derived& add(Args&& ...args) {
+      IBase::push_back(std::make_unique<Derived>(std::forward<Args>(args)...));
+      return static_cast<Derived&>(*IBase::back());
+    }
+
+    using IBase::cbegin, IBase::cend, IBase::size, IBase::data;
+    using IBase::begin, IBase::end;
+
+  };
+
+
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
+  using detail::OOStore;
   using detail::Camera;
 }  // namespace rtweekend
 

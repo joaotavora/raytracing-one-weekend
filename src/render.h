@@ -18,8 +18,8 @@ namespace rtweekend::detail {
   };
 
   class World  {
-    mutable Store<Primitive> primitives_;
-    Store<Material> boutique_;
+    mutable PrimitiveStore_t primitives_;
+    MaterialStore_t boutique_;
   public:
     BVHNode get_root_bvh() const;
     auto& primitives() {return primitives_;}
