@@ -1,7 +1,6 @@
 #pragma once
 
-#include "oomodel.h"
-#include <iosfwd>
+#include "primitive-model.h"
 
 namespace rtweekend::detail {
 
@@ -25,7 +24,6 @@ namespace rtweekend::detail {
     auto& primitives() {return primitives_;}
     auto& boutique() {return boutique_;}
   };
-  using PView_t = std::span<std::unique_ptr<Primitive>>;
 
   void render(const World& world, const Camera &cam, const Config &cfg);
 

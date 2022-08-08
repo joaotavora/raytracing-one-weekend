@@ -5,7 +5,7 @@
 
 #include "random-utils.h"
 #include "render.h"
-#include "oomodel.h"
+#include "primitive-model.h"
 
 #include <fmt/core.h>
 

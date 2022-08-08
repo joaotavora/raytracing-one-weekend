@@ -5,7 +5,7 @@
 #include <CLI/Config.hpp>
 
 #include "random-utils.h"
-#include "oomodel.h"
+#include "primitive-model.h"
 #include "render.h"
 
 namespace rt=rtweekend;
@@ -17,7 +17,7 @@ rt::World lots_of_balls(const rt::Config& cfg) {
   auto& boutique = world.boutique();
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
-  world.primitives().add<rt::Sphere>(rt::point{0,-1000,0}, 1000, ground_material);
+  world.primitives().add<rt::Sphere>(rt::point{0,-1000,0}, 1000.0, ground_material);
 
   int nsqrt = cfg.number_of_balls_sqrt;
 

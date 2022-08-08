@@ -111,6 +111,44 @@ namespace rtweekend::detail {
     double t0_, t1_;
   };
 
+    class Material { // NOLINT(cppcoreguidelines-special-member-functions)
+  public:
+    [[nodiscard]] virtual std::optional<ScatterRecord>
+    scatter(const Ray& r_in, const Hit& rec) const = 0;
+
+    virtual ~Material() = default;
+  };
+
+  struct Lambertian : public Material {
+    explicit Lambertian(const color& albedo) : albedo{albedo} {}
+
+    std::optional<ScatterRecord> scatter(const Ray &,
+                                         const Hit &hit) const override;
+    color albedo;
+  };
+
+  struct Metal : public Material {
+    explicit Metal(const color& albedo, double fuzz=0)
+      : albedo{albedo}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
+
+    std::optional<ScatterRecord> scatter(const Ray &r,
+                                         const Hit &hit) const override;
+
+    color albedo;
+    double fuzz;
+  };
+
+  struct Dielectric : public Material {
+    explicit Dielectric(double index_of_refraction, double fuzz=0)
+      : ir{index_of_refraction}, fuzz{std::clamp(fuzz, 0.0, 1.0)} {}
+
+    std::optional<ScatterRecord> scatter(const Ray &ray,
+                                         const Hit &rec) const override;
+    double ir;
+    double fuzz;
+  };
+
+
   template <typename Base>
   class OOStore : private std::vector<std::unique_ptr<Base>> {
     using IBase = std::vector<std::unique_ptr<Base>>;
@@ -133,6 +171,10 @@ namespace rtweekend::detail {
 namespace rtweekend {
   using detail::OOStore;
   using detail::Camera;
+  using detail::Material;
+  using detail::Lambertian;
+  using detail::Metal;
+  using detail::Dielectric;
 }  // namespace rtweekend
 
 // Local Variables:
