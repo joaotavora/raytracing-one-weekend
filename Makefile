@@ -1,6 +1,9 @@
 CXX=clang++
 CXXFLAGS=-gdwarf-4
 
+build-release:
+	make -C build-release
+
 configure-debug: export CXX      := ${CXX}
 configure-debug: export CXXFLAGS := ${CXXFLAGS} -fsanitize=address -fsanitize=undefined
 configure-debug:
@@ -17,9 +20,6 @@ configure-release:
 
 compile_commands.json:
 	ln -sf build-release/compile_commands.json compile_commands.json
-
-build-release:
-	make -C build-release
 
 build-debug:
 	make -C build-debug
