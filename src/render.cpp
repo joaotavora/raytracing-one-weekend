@@ -55,16 +55,16 @@ namespace rtweekend::detail {
     if (!bounding_box_.hit(r, tmin, tmax)) return {};
 
     if (!wv_.empty()) {
-      std::optional<Hit> hit{};
+      std::optional<Hit> retval{};
       auto upper_bound = tmax;
       for (const auto &h : wv_) {
-        auto probe = h->hit(r, tmin, upper_bound);
+        auto probe = detail::hit(h, r, tmin, upper_bound);
         if (probe) {
-          hit = probe;
+          retval = probe;
           upper_bound = probe->at();
         }
       }
-      return hit;
+      return retval;
     }
     auto left_probe = left_->hit(r, tmin, tmax);
     auto right_probe = right_->hit(r, tmin, left_probe?left_probe->at():tmax);
@@ -76,12 +76,12 @@ namespace rtweekend::detail {
     if (!wv.empty() && wv.size() <= 6) {
       wv_ = wv;
       for (const auto& p : wv) {
-        bounding_box_ = surrounding_box(bounding_box_, p->bounding_box());
+        bounding_box_ = surrounding_box(bounding_box_, bounding_box(p));
       }
     } else {
       auto axis = [&]{
-        auto pbegbb = (*wv.begin())->bounding_box();
-        auto pendbb = (*wv.rbegin())->bounding_box();
+        auto pbegbb = bounding_box(*wv.begin());
+        auto pendbb = bounding_box(*wv.rbegin());
         int retval{};
         auto delta = pendbb.min() - pbegbb.min();
         if (::fabs(delta.x) > ::fabs(delta.y)) {
@@ -95,8 +95,8 @@ namespace rtweekend::detail {
       }();
       std::sort(wv.begin(), wv.end(),
                 [&axis](auto& p1, auto& p2) {
-                auto p1b = p1->bounding_box();
-                auto p2b = p2->bounding_box();
+                auto p1b = bounding_box(p1);
+                auto p2b = bounding_box(p2);
 
                 return p1b.min()[axis] < p2b.min()[axis];
                 return true;

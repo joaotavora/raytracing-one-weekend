@@ -131,6 +131,13 @@ namespace rtweekend::detail {
 
   };
 
+  inline auto hit(const std::unique_ptr<Primitive>& h, const Ray& r, double tmin, double tmax) {
+    return h->hit(r, tmin, tmax);
+  }
+
+  inline auto bounding_box(const std::unique_ptr<Primitive>& h) {
+    return h->bounding_box();
+  }
 }  // namespace rtweekend::detail
 
 namespace rtweekend {
