@@ -19,22 +19,26 @@ namespace rtweekend::detail {
     std::optional<std::string> model = {};
   };
 
-  class World  {
+  class Scene  {
     mutable PrimitiveStore_t primitives_;
     MaterialStore_t boutique_;
+    Camera cam_;
   public:
+    template <typename T>
+    explicit Scene(T&& camera) : cam_{std::forward<T>(camera)} {};
+    auto& camera() const {return cam_;}
     BVHNode get_root_bvh() const;
     auto& primitives() {return primitives_;}
     auto& boutique() {return boutique_;}
   };
 
-  void render(const World& world, const Camera &cam, const Config &cfg);
+  void render(const Scene& world, const Config &cfg);
 
   std::ostream& operator<<(std::ostream& o, const Config& c);
 } // namespace rtweekend::detail
 
 namespace rtweekend {
-  using detail::World;
+  using detail::Scene;
   using detail::render;
   using detail::Config;
 }

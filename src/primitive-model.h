@@ -1,5 +1,5 @@
-#ifdef RTWEEKEND_VARIANT_PRIMITIVES
+// #if 1
 #include "variant-primitives.h"
-#else
-#include "oo-primitives.h"
-#endif
+// #else
+// #include "oo-primitives.h"
+// #endif

@@ -128,11 +128,12 @@ namespace rtweekend::detail {
     return (1.0-t)*color{1.0, 1.0, 1.0} + t*color{0.5, 0.7, 1.0};
   }
 
-  BVHNode World::get_root_bvh() const {
+  BVHNode Scene::get_root_bvh() const {
       return detail::BVHNode{primitives_};
   }
 
-  void render(const World& world, const Camera &cam, const Config &cfg) {
+  void render(const Scene& world, const Config &cfg) {
+    const auto& cam = world.camera();
     int image_height = static_cast<int>(cfg.image_width / cfg.aspect_ratio);
 
     namespace khr = std::chrono;

@@ -1,4 +1,3 @@
-#include "oo-primitives.h"
 #include "vec3.h"
 #include <random>
 
@@ -21,8 +20,19 @@
 
 namespace rt=rtweekend;
 
-rt::World lots_of_balls(const rt::Config& cfg) {
-  rt::World world{};
+rt::Scene lots_of_balls(const rt::Config& cfg) {
+    // Camera
+  rt::Camera cam{rt::point(13,2,3),
+                 rt::point(0,0,0),
+                 rt::vec3(0,1,0),
+                 20.0,
+                 cfg.aspect_ratio,
+                 0.1,
+                 10.0,
+                 0,
+                 1};
+
+  rt::Scene world{cam};
   auto& boutique = world.boutique();
 
   auto& ground_material = boutique.add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
@@ -72,8 +82,21 @@ rt::World lots_of_balls(const rt::Config& cfg) {
   return world;
 }
 
-rt::World foo(const std::string& model) {
-  rt::World world{};
+rt::Scene foo(const rt::Config& cfg) {
+  rt::random_int();
+
+    // Camera
+  rt::Camera cam{rt::point(1,0,-1),
+                 rt::point(0,0,0),
+                 rt::vec3(0,1,0),
+                 35.0,
+                 cfg.aspect_ratio,
+                 0.01,
+                 std::nullopt,
+                 0,
+                 1};
+  
+  rt::Scene world{cam};
   auto& boring_material =
     world.boutique().add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
 
@@ -83,7 +106,8 @@ rt::World foo(const std::string& model) {
 
   std::string err;
 
-  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, model.c_str())) {
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err,
+                        cfg.model.value().c_str())) {
     throw std::runtime_error(fmt::format("Can't load because {}", err));
   };
 
@@ -102,10 +126,12 @@ rt::World foo(const std::string& model) {
       }
       world.primitives().add<rt::Triangle>(tvees[0], tvees[1], tvees[2],
                                            boring_material);
+    } else {
+      throw std::runtime_error(fmt::format("Oops found a face that isn't a triangle"));
     }
     index_offset += fv;
   }
-  fmt::print(stderr, "World has {} primitives", world.primitives().size());
+  fmt::print(stderr,"Scene has {} triangles\n", world.primitives().size());
   return world;
 }
 
@@ -136,20 +162,9 @@ int main(int argc, char* argv[]) {
 
   if (dry_run) { std::cout << cfg; return 0; }
 
-  // Camera
-  rt::Camera cam{rt::point(13,2,3),
-                 rt::point(0,0,0),
-                 rt::vec3(0,1,0),
-                 20.0,
-                 cfg.aspect_ratio,
-                 0.1,
-                 10.0,
-                 0,
-                 1};
-
   if (cfg.model) {
-    rt::render(foo(cfg.model.value()), cam, cfg);
+    rt::render(foo(cfg), cfg);
   } else {
-    rt::render(lots_of_balls(cfg), cam, cfg);
+    rt::render(lots_of_balls(cfg), cfg);
   }
 }

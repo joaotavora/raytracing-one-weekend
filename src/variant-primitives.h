@@ -67,6 +67,20 @@ namespace rtweekend::detail {
     double radius_;
   };
 
+  class Triangle : public Primitive {
+  public:
+    Triangle(point a, point b, point c, const Material& material)
+      : Primitive{material}, a_{a}, b_{b}, c_{c} {}
+
+    [[nodiscard]] std::optional<Hit>
+    hit(const Ray &r, double tmin, double tmax) const;
+
+    [[nodiscard]] Aabb
+    bounding_box() const;
+  private:
+    point a_, b_, c_;
+  };
+
   template <typename ...T>
   class VariantStore : private std::vector<std::variant<T...>> {
   public:
@@ -87,7 +101,7 @@ namespace rtweekend::detail {
 
   };
 
-  using PrimitiveStore_t = detail::VariantStore<detail::Sphere, detail::MovingSphere>;
+  using PrimitiveStore_t = detail::VariantStore<detail::Sphere, detail::MovingSphere, detail::Triangle>;
   using PView_t = std::span<PrimitiveStore_t::value_type>;
 
   inline auto hit(const PrimitiveStore_t::value_type& h, const Ray& r, double tmin, double tmax) {
@@ -102,6 +116,7 @@ namespace rtweekend::detail {
 namespace rtweekend {
   using detail::PrimitiveStore_t;
   using MaterialStore_t = detail::OOStore<detail::Material>;
+  using detail::Triangle;
   using detail::Sphere;
   using detail::MovingSphere;
 }  // namespace rtweekend
