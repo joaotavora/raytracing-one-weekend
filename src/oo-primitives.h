@@ -10,8 +10,6 @@
 #include "common-model.h"
 
 namespace rtweekend::detail {
-  extern int thrashing_allocator_pathos; // NOLINT
-
   class Primitive { // NOLINT(cppcoreguidelines-special-member-functions)
   public:
     [[nodiscard]] virtual std::optional<Hit>
