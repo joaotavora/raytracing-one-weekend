@@ -3,8 +3,6 @@
 #include <optional>
 #include <span>
 #include <memory>
-#include <vector>
-#include <algorithm>
 
 #include "vec3.h"
 #include "common-model.h"
