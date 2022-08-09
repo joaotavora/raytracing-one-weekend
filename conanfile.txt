@@ -1,6 +1,7 @@
 [requires]
 glm/cci.20220420
 stb/cci.20210910
+tinyobjloader/1.0.6
 cli11/2.2.0
 fmt/9.0.0
 

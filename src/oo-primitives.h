@@ -71,6 +71,22 @@ namespace rtweekend::detail {
     double radius_;
   };
 
+  class Triangle : public Primitive {
+  public:
+    Triangle(point a, point b, point c, const Material& material)
+      : Primitive{material}, a_{a}, b_{b}, c_{c} {}
+
+    [[nodiscard]] std::optional<Hit>
+    hit(const Ray &r, double tmin, double tmax) const override;
+
+    [[nodiscard]] Aabb
+    bounding_box() const override;
+  private:
+    point a_, b_, c_;
+  };
+
+
+
   using PView_t = std::span<std::unique_ptr<Primitive>>;
 
   inline auto hit(const std::unique_ptr<Primitive>& h, const Ray& r, double tmin, double tmax) {
@@ -86,6 +102,7 @@ namespace rtweekend {
   using PrimitiveStore_t = detail::OOStore<detail::Primitive>;
   using MaterialStore_t = detail::OOStore<detail::Material>;
   using detail::Sphere;
+  using detail::Triangle;
   using detail::MovingSphere;
 }  // namespace rtweekend
 

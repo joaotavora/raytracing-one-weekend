@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 #include "vec3.h"
 
@@ -58,8 +59,8 @@ namespace rtweekend::detail {
   class Aabb {
   public:
     Aabb() {}
-    Aabb(const point& a, const point& b)
-      : min_{a}, max_{b} {}
+    Aabb(const point& min, const point& max)
+      : min_{min}, max_{max} {}
 
     const point& min() const {return min_; }
     const point& max() const {return max_; }

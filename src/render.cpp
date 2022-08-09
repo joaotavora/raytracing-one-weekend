@@ -7,8 +7,6 @@
 #include "render.h"
 #include "primitive-model.h"
 
-#include <fmt/core.h>
-
 namespace rtweekend::detail {
   static void write_color(std::ostream &out, color c, int samples_per_pixel) {
     // Divide the color by the number of samples and correct with gamma=2

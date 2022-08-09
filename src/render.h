@@ -1,4 +1,6 @@
 #pragma once
+#include <optional>
+#include <string>
 
 #include "primitive-model.h"
 
@@ -9,11 +11,12 @@ namespace rtweekend::detail {
   struct Config {
     int number_of_balls_sqrt = 11;
     double aspect_ratio = 3.0/2.0;
-    int image_width = 1200;
-    int samples_per_pixel = 100;
+    int image_width = 200;
+    int samples_per_pixel = 20;
     bool moving_spheres = true;
-    int max_child_rays = 50;
+    int max_child_rays = 20;
     int nthreads = 4;
+    std::optional<std::string> model = {};
   };
 
   class World  {

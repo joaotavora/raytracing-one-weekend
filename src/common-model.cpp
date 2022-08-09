@@ -100,6 +100,39 @@ namespace rtweekend::detail {
     return sphere_hit_helper(r, tmin, tmax, center(r.time()), radius(), *this);
   }
 
+  std::optional<Hit>
+  Triangle::hit(const Ray &r, double tmin, double tmax) const {
+    // Cargo culted: https://stackoverflow.com/a/42752998/177259
+    vec3 e1 = b_ - a_;
+    vec3 e2 = c_ - a_;
+    auto n = glm::cross(e1,e2);
+    auto det = - glm::dot(r.direction(), n);
+    auto invdet = 1.0/det;
+    vec3 ao  = r.origin() - a_;
+    vec3 dao = glm::cross(ao, r.direction());
+    auto u =  glm::dot(e2,dao) * invdet;
+    auto v = -glm::dot(e1,dao) * invdet;
+    auto t =  glm::dot(ao,n)  * invdet;
+    if (det >= 1e-6 &&
+        t >= tmin &&
+        t <= tmax &&
+        u >= 0.0 &&
+        v >= 0.0 &&
+        (u+v) <= 1.0) {
+      return Hit{*this, r.at(t), t, n, true};
+    }
+    return {};
+  }
+
+  Aabb Triangle::bounding_box() const {
+    return Aabb{glm::vec3{std::min({a_.x, b_.x, c_.x}),
+                          std::min({a_.y, b_.y, c_.y}),
+                          std::min({a_.z, b_.z, c_.z})},
+                glm::vec3{std::max({a_.x, b_.x, c_.x}),
+                          std::max({a_.y, b_.y, c_.y}),
+                          std::max({a_.z, b_.z, c_.z})}};
+  }
+
   Camera::Camera(point lookfrom, point lookat, vec3 vup, double fov,
                  double aspect_ratio, double aperture,
                  std::optional<double> focus_dist, time_t t0, time_t t1)

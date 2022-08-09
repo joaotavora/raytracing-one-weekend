@@ -1,15 +1,23 @@
+#include "oo-primitives.h"
+#include "vec3.h"
 #include <random>
 
 #include <CLI/App.hpp>
 #include <CLI/Formatter.hpp>
 #include <CLI/Config.hpp>
+#include <stdexcept>
+
+#define TINYOBJLOADER_USE_DOUBLE
+#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
+#include <tiny_obj_loader.h>
+
+#include <fmt/core.h>
 
 #include "random-utils.h"
 #include "primitive-model.h"
 #include "render.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
-#include <tiny_obj_loader.h>
+
 
 namespace rt=rtweekend;
 
@@ -64,7 +72,45 @@ rt::World lots_of_balls(const rt::Config& cfg) {
   return world;
 }
 
+rt::World foo(const std::string& model) {
+  rt::World world{};
+  auto& boring_material =
+    world.boutique().add<rt::Lambertian>(rt::color{0.5, 0.5, 0.5});
+
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+
+  if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, model.c_str())) {
+    throw std::runtime_error(fmt::format("Can't load because {}", err));
+  };
+
+  size_t index_offset = 0;
+  for (const auto& face_vertexes : shapes[0].mesh.num_face_vertices) {
+    size_t fv = static_cast<size_t>(face_vertexes);
+    if (fv == 3) {
+      rt::point tvees[3]; // NOLINT
+      for (size_t v = 0; v < fv; v++) {
+        // access to vertex
+        tinyobj::index_t idx = shapes[0].mesh.indices[index_offset + v];
+        auto vx = attrib.vertices[3*static_cast<size_t>(idx.vertex_index)+0];
+        auto vy = attrib.vertices[3*static_cast<size_t>(idx.vertex_index)+1];
+        auto vz = attrib.vertices[3*static_cast<size_t>(idx.vertex_index)+2];
+        tvees[v] = rt::point{vx, vy, vz}; // NOLINT
+      }
+      world.primitives().add<rt::Triangle>(tvees[0], tvees[1], tvees[2],
+                                           boring_material);
+    }
+    index_offset += fv;
+  }
+  fmt::print(stderr, "World has {} primitives", world.primitives().size());
+  return world;
+}
+
 int main(int argc, char* argv[]) {
+
   CLI::App app{"Raytracing one weekend/week/restoflife"};
   rt::Config cfg{};
   bool quick = false;
@@ -84,21 +130,11 @@ int main(int argc, char* argv[]) {
                  "Moving spheres");
   app.add_flag("-q,--quick", quick, "Quickie");
   app.add_flag("--dry-run", dry_run, "Dry run");
+  app.add_option("-l,--load", cfg.model, "Model to load");
 
   CLI11_PARSE(app, argc, argv);
 
-  if (quick) {
-    cfg.image_width = 200;
-    cfg.number_of_balls_sqrt = 11;
-    cfg.moving_spheres = true;
-    cfg.samples_per_pixel = 20;
-    cfg.max_child_rays = 20;
-  }
-
-  if (dry_run) {
-    std::cout << cfg;
-    return 0;
-  }
+  if (dry_run) { std::cout << cfg; return 0; }
 
   // Camera
   rt::Camera cam{rt::point(13,2,3),
@@ -111,5 +147,9 @@ int main(int argc, char* argv[]) {
                  0,
                  1};
 
-  rt::render(lots_of_balls(cfg), cam, cfg);
+  if (cfg.model) {
+    rt::render(foo(cfg.model.value()), cam, cfg);
+  } else {
+    rt::render(lots_of_balls(cfg), cam, cfg);
+  }
 }
