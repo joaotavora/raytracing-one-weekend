@@ -11,8 +11,6 @@
 #include "common-model.h"
 
 namespace rtweekend::detail {
-  extern int thrashing_allocator_pathos; // NOLINT
-
   class Primitive {
   public:
     explicit Primitive(const Material& m) : material_{&m} {};
