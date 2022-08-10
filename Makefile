@@ -6,14 +6,16 @@ build-debug: export CXXFLAGS := -gdwarf-4 -fsanitize=address -fsanitize=undefine
 build-debug:   CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Debug   -G"Unix Makefiles"
 build-release: CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Release -GNinja
 
+build-release: export CXXFLAGS := ${CPPFLAGS} -DRTWEEKEND_USE_VARIANT_PRIMITIVES
+
 build-%: export CXX := ${CXX}
 build-%:
 	mkdir -p build-$*
 	cd build-$* && conan install --build=missing ../
 	cd build-$* && cmake ${CMAKE_FLAGS} ../
 
-compile_commands.json: build-debug
-	ln -sf build-debug/compile_commands.json compile_commands.json
+compile_commands.json: build-release
+	ln -sf build-release/compile_commands.json compile_commands.json
 
 watch-%:
 	feh -Z /tmp/test.ppm&
