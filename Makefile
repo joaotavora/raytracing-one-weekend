@@ -1,40 +1,34 @@
 CXX=clang++
-CXXFLAGS=-gdwarf-4
 
-build-release:
-	make -C build-release
+all: release debug
 
-configure-debug: export CXX      := ${CXX}
-configure-debug: export CXXFLAGS := ${CXXFLAGS} -fsanitize=address -fsanitize=undefined
-configure-debug:
-	mkdir -p build-debug
-	cd build-debug && conan install --build=missing ../
-	cd build-debug && cmake -DCMAKE_BUILD_TYPE=Debug ../ -G"Unix Makefiles"
+build-debug: export CXXFLAGS := -gdwarf-4 -fsanitize=address -fsanitize=undefined
+build-debug:   CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Debug   -G"Unix Makefiles"
+build-release: CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Release -GNinja
 
-configure-release: export CXX      := ${CXX}
-configure-release: export CXXFLAGS := ${CXXFLAGS}
-configure-release:
-	mkdir -p build-release
-	cd build-release && conan install --build=missing ../
-	cd build-release && cmake -DCMAKE_BUILD_TYPE=Release ../ -G"Unix Makefiles"
+build-%: export CXX := ${CXX}
+build-%:
+	mkdir -p build-$*
+	cd build-$* && conan install --build=missing ../
+	cd build-$* && cmake ${CMAKE_FLAGS} ../
 
-compile_commands.json:
-	ln -sf build-release/compile_commands.json compile_commands.json
+compile_commands.json: build-debug
+	ln -sf build-debug/compile_commands.json compile_commands.json
 
-build-debug:
+watch-%:
+	feh -Z /tmp/test.ppm&
+	rg --files src | entr -r -s 'make run-$*'
+
+run-%:
+	build-$*/bin/rtweekend > /tmp/test.ppm
+
+release: build-release
+	ninja -C build-release
+
+debug: build-debug
 	make -C build-debug
 
-run: build-release
-	./build-release/bin/rtweekend -q > /tmp/test.ppm
-
-watch:
-	feh -Z /tmp/test.ppm&
-	rg --files src |                                                \
-        entr -r -s 'make run'
-
-bootstrap: configure-release build-release
-
 clean:
-	rm -rf build-debug build-release compile_commands.json
+	rm -rf build-*
 
-.PHONY: clean configure-debug configure-release run debug build-release build-debug
+.PHONY: clean all release debug watch
