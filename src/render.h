@@ -25,7 +25,7 @@ namespace rtweekend::detail {
     Camera cam_;
   public:
     template <typename T>
-    explicit Scene(T&& camera) : cam_{std::forward<T>(camera)} {};
+    explicit Scene(T&& camera) : cam_{std::forward<T>(camera)} {}
     auto& camera() const {return cam_;}
     BVHNode get_root_bvh() const;
     auto& primitives() {return primitives_;}

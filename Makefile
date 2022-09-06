@@ -13,11 +13,11 @@ build-%:
 	(cd build-$* && CXXFLAGS='${CXXFLAGS}' cmake ${CMAKE_FLAGS} ../)       \
               || (ret=$$?; rm -rf $@ && exit $$ret)
 
-watch-%:
+watch-%: %
 	feh -Z /tmp/test.ppm&
 	rg --files src | entr -r -s 'make run-$*'
 
-run-%:
+run-%: %
 	build-$*/bin/rtweekend > /tmp/test.ppm
 
 %: build-%
