@@ -1,21 +1,17 @@
-CXX=clang++
-
 all: release debug
 
-build-debug: export CXXFLAGS := -gdwarf-4 -fsanitize=address -fsanitize=undefined
+build-debug:   CXXFLAGS := -gdwarf-4 -fsanitize=address -fsanitize=undefined
 build-debug:   CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Debug   -G"Unix Makefiles"
-build-release: CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Release -GNinja
 
-build-release: export CXXFLAGS := ${CPPFLAGS} -DRTWEEKEND_USE_VARIANT_PRIMITIVES
+build-release: CMAKE_FLAGS=-DCMAKE_BUILD_TYPE=Release -G"Unix Makefiles"
 
 build-%: export CXX := ${CXX}
 build-%:
 	mkdir -p build-$*
-	cd build-$* && conan install --build=missing ../
-	cd build-$* && cmake ${CMAKE_FLAGS} ../
-
-compile_commands.json: build-release
-	ln -sf build-release/compile_commands.json compile_commands.json
+	(cd build-$* && conan install --build=missing --profile=${CXX} ../) \
+              || (ret=$$?; rm -rf $@ && exit $$ret)
+	(cd build-$* && CXXFLAGS='${CXXFLAGS}' cmake ${CMAKE_FLAGS} ../)       \
+              || (ret=$$?; rm -rf $@ && exit $$ret)
 
 watch-%:
 	feh -Z /tmp/test.ppm&
@@ -24,13 +20,10 @@ watch-%:
 run-%:
 	build-$*/bin/rtweekend > /tmp/test.ppm
 
-release: build-release
-	ninja -C build-release
-
-debug: build-debug
-	make -C build-debug
+%: build-%
+	make -C build-$*
 
 clean:
 	rm -rf build-*
 
-.PHONY: clean all release debug watch
+.PHONY: clean all watch

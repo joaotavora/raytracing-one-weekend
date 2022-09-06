@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(rtweekend CXX) # PROJECT_NAME is now "hello"
+project(rtweekend CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 # This will come in handy for LSP servers such as clangd
